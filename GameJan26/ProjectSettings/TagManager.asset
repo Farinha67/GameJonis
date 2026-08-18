@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Pickup
   - Trash
+  - Regador
   layers:
   - Default
   - TransparentFX

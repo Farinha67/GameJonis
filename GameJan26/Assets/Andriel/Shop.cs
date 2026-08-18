@@ -7,82 +7,307 @@ public class Shop : MonoBehaviour
     public int precoSemente = 10;
     public int precoRegador = 15;
 
+    [Header("Regador")]
+    public GameObject regadorPrefab;
+    public Transform holdingPoint;
+
     [Header("Configuração")]
-    public float distanciaCompra = 3f;
+    public float distanciaLoja = 3f;
 
     private Transform player;
-    private bool pertoDaLoja = false;
+    private PlayerMoney playerMoney;
+
+    private bool playerPerto = false;
+
+    private GameObject regadorNaMao;
 
     void Start()
     {
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+        // Procura o Player
+        GameObject playerObject =
+            GameObject.FindGameObjectWithTag("Player");
 
         if (playerObject != null)
         {
             player = playerObject.transform;
+
+            // Pega o PlayerMoney do Player
+            playerMoney =
+                playerObject.GetComponent<PlayerMoney>();
+
+            if (playerMoney == null)
+            {
+                Debug.LogError(
+                    "❌ O Player não possui o script PlayerMoney!"
+                );
+            }
         }
         else
         {
-            Debug.LogWarning("Não encontrei um Player com a Tag 'Player'.");
+            Debug.LogError(
+                "❌ Player não encontrado! Confira a Tag 'Player'."
+            );
         }
     }
 
     void Update()
     {
-        if (player == null)
+        if (player == null || playerMoney == null)
             return;
 
-        float distancia = Vector3.Distance(transform.position, player.position);
+        float distancia =
+            Vector3.Distance(
+                transform.position,
+                player.position
+            );
 
-        pertoDaLoja = distancia <= distanciaCompra;
+        playerPerto =
+            distancia <= distanciaLoja;
 
-        if (pertoDaLoja && Keyboard.current != null)
+        if (Keyboard.current == null)
+            return;
+
+        // =========================
+        // COMPRAS
+        // =========================
+
+        if (playerPerto)
         {
-            // E = comprar semente
+            // E = Semente
             if (Keyboard.current.eKey.wasPressedThisFrame)
             {
                 ComprarSemente();
             }
 
-            // Q = comprar regador
+            // Q = Regador
             if (Keyboard.current.qKey.wasPressedThisFrame)
             {
                 ComprarRegador();
             }
         }
+
+        // =========================
+        // SOLTAR REGADOR
+        // =========================
+
+        if (!playerPerto &&
+            regadorNaMao != null &&
+            Keyboard.current.qKey.wasPressedThisFrame)
+        {
+            SoltarRegador();
+        }
     }
+
+    // =====================================================
+    // COMPRAR SEMENTE
+    // =====================================================
 
     void ComprarSemente()
     {
-        Debug.Log("🌱 Semente comprada por R$" + precoSemente);
+        if (playerMoney.RemoverDinheiro(precoSemente))
+        {
+            Debug.Log("🌱 Semente comprada!");
+
+            Debug.Log(
+                "💰 Saldo: R$" +
+                playerMoney.GetDinheiro()
+            );
+        }
     }
+
+    // =====================================================
+    // COMPRAR REGADOR
+    // =====================================================
 
     void ComprarRegador()
     {
-        Debug.Log("💧 Regador comprado por R$" + precoRegador);
+        // Já está segurando
+        if (regadorNaMao != null)
+        {
+            Debug.Log(
+                "💧 Você já está segurando um regador!"
+            );
+
+            return;
+        }
+
+        if (regadorPrefab == null)
+        {
+            Debug.LogError(
+                "❌ Regador Prefab não foi colocado no Shop!"
+            );
+
+            return;
+        }
+
+        if (holdingPoint == null)
+        {
+            Debug.LogError(
+                "❌ Holding Point não foi colocado no Shop!"
+            );
+
+            return;
+        }
+
+        // Tenta tirar R$15 do dinheiro REAL do Player
+        if (!playerMoney.RemoverDinheiro(precoRegador))
+        {
+            return;
+        }
+
+        // Cria o regador
+        regadorNaMao = Instantiate(
+            regadorPrefab,
+            holdingPoint.position,
+            holdingPoint.rotation
+        );
+
+        // Coloca na mão
+        regadorNaMao.transform.SetParent(
+            holdingPoint
+        );
+
+        regadorNaMao.transform.localPosition =
+            Vector3.zero;
+
+        regadorNaMao.transform.localRotation =
+            Quaternion.identity;
+
+        // Desliga física
+        Rigidbody rb =
+            regadorNaMao.GetComponent<Rigidbody>();
+
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
+        // Desliga colisão
+        Collider col =
+            regadorNaMao.GetComponent<Collider>();
+
+        if (col != null)
+        {
+            col.enabled = false;
+        }
+
+        Debug.Log("💧 Regador comprado!");
+
+        Debug.Log(
+            "💰 Saldo: R$" +
+            playerMoney.GetDinheiro()
+        );
     }
+
+    // =====================================================
+    // SOLTAR REGADOR
+    // =====================================================
+
+    void SoltarRegador()
+    {
+        if (regadorNaMao == null)
+            return;
+
+        regadorNaMao.transform.SetParent(null);
+
+        regadorNaMao.transform.position =
+            player.position +
+            player.forward * 1.5f;
+
+        Rigidbody rb =
+            regadorNaMao.GetComponent<Rigidbody>();
+
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.useGravity = true;
+        }
+
+        Collider col =
+            regadorNaMao.GetComponent<Collider>();
+
+        if (col != null)
+        {
+            col.enabled = true;
+        }
+
+        regadorNaMao = null;
+
+        Debug.Log("💧 Regador solto!");
+    }
+
+    // =====================================================
+    // VERIFICAR REGADOR
+    // =====================================================
+
+    public bool EstaSegurandoRegador()
+    {
+        return regadorNaMao != null;
+    }
+
+    // =====================================================
+    // USAR REGADOR
+    // =====================================================
+
+    public void UsarRegador()
+    {
+        if (regadorNaMao == null)
+            return;
+
+        Destroy(regadorNaMao);
+
+        regadorNaMao = null;
+
+        Debug.Log(
+            "💧 Regador usado e consumido!"
+        );
+    }
+
+    // =====================================================
+    // TEXTO DA LOJA
+    // =====================================================
 
     void OnGUI()
     {
-        if (!pertoDaLoja)
+        if (!playerPerto || playerMoney == null)
             return;
 
-        GUIStyle estilo = new GUIStyle(GUI.skin.box);
+        GUIStyle estilo =
+            new GUIStyle(GUI.skin.box);
 
-        estilo.fontSize = 22;
-        estilo.alignment = TextAnchor.MiddleCenter;
+        estilo.fontSize = 20;
+        estilo.alignment =
+            TextAnchor.MiddleCenter;
 
-        float largura = 400;
-        float altura = 130;
+        float largura = 450;
+        float altura = 150;
 
-        float x = (Screen.width - largura) / 2;
-        float y = Screen.height - 180;
+        float x =
+            (Screen.width - largura) / 2;
+
+        float y =
+            Screen.height - 220;
 
         GUI.Box(
-            new Rect(x, y, largura, altura),
+            new Rect(
+                x,
+                y,
+                largura,
+                altura
+            ),
+
             "🛒 LOJA\n\n" +
-            "E - Comprar Semente - R$" + precoSemente +
-            "\nQ - Comprar Regador - R$" + precoRegador,
+
+            "E - Comprar Semente - R$" +
+            precoSemente +
+
+            "\nQ - Comprar Regador - R$" +
+            precoRegador +
+
+            "\n\nDinheiro: R$" +
+            playerMoney.GetDinheiro(),
+
             estilo
         );
     }
