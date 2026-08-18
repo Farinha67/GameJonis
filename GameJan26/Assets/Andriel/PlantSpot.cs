@@ -39,7 +39,7 @@ public class PlantSpot : MonoBehaviour
     void Start()
     {
         // =========================
-        // ENCONTRAR PLAYER
+        // PLAYER
         // =========================
 
         GameObject playerObject =
@@ -52,12 +52,12 @@ public class PlantSpot : MonoBehaviour
         else
         {
             Debug.LogWarning(
-                "Player não encontrado! Coloque a Tag 'Player' no Player."
+                "❌ Player não encontrado!"
             );
         }
 
         // =========================
-        // ENCONTRAR LOJA
+        // SHOP
         // =========================
 
         loja = FindFirstObjectByType<Shop>();
@@ -65,7 +65,7 @@ public class PlantSpot : MonoBehaviour
         if (loja == null)
         {
             Debug.LogWarning(
-                "Shop não encontrado na cena!"
+                "❌ Shop não encontrado!"
             );
         }
     }
@@ -76,7 +76,7 @@ public class PlantSpot : MonoBehaviour
             return;
 
         // =========================
-        // DISTÂNCIA DO PLAYER
+        // DISTÂNCIA
         // =========================
 
         float distancia =
@@ -89,7 +89,7 @@ public class PlantSpot : MonoBehaviour
             distancia <= distanciaPlantio;
 
         // =========================
-        // VOLUME DO SOM DE CRESCIMENTO
+        // SOM DE CRESCIMENTO
         // =========================
 
         if (crescimentoAudioSource != null &&
@@ -108,34 +108,27 @@ public class PlantSpot : MonoBehaviour
                 );
         }
 
-        // =========================
-        // INTERAÇÃO
-        // =========================
-
         if (!playerPerto)
             return;
 
         if (Keyboard.current == null)
             return;
 
+        // =========================
+        // E
+        // =========================
+
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
-            // =========================
-            // PLANTAR
-            // =========================
-
+            // Se não existe árvore
             if (arvoreAtual == null)
             {
                 Plantar();
                 return;
             }
 
-            // =========================
-            // REGAR
-            // =========================
-
-            if (arvoreAtual != null &&
-                !foiRegada)
+            // Se existe árvore e ainda não foi regada
+            if (!foiRegada)
             {
                 TentarRegar();
             }
@@ -151,7 +144,7 @@ public class PlantSpot : MonoBehaviour
         if (arvorePrefab == null)
         {
             Debug.LogWarning(
-                "⚠️ Coloque o Prefab da árvore no PlantSpot!"
+                "⚠️ Coloque o Prefab da árvore!"
             );
 
             return;
@@ -163,21 +156,34 @@ public class PlantSpot : MonoBehaviour
             Quaternion.identity
         );
 
-        // Começa com 30% do tamanho
         arvoreAtual.transform.localScale =
             Vector3.one * 0.3f;
 
+        // Garante a Tag
+        arvoreAtual.tag = "Arvore";
+
         // =========================
-        // SOM DE PLANTIO
+        // RESET DOS ESTADOS
+        // =========================
+
+        foiRegada = false;
+        crescendo = false;
+
+        // =========================
+        // SOM
         // =========================
 
         if (audioSource != null &&
             somPlantio != null)
         {
-            audioSource.PlayOneShot(somPlantio);
+            audioSource.PlayOneShot(
+                somPlantio
+            );
         }
 
-        Debug.Log("🌱 Semente plantada!");
+        Debug.Log(
+            "🌱 Semente plantada!"
+        );
     }
 
     // =====================================================
@@ -188,14 +194,23 @@ public class PlantSpot : MonoBehaviour
     {
         if (loja == null)
         {
+            loja =
+                FindFirstObjectByType<Shop>();
+        }
+
+        if (loja == null)
+        {
             Debug.LogWarning(
-                "Shop não encontrado!"
+                "❌ Shop não encontrado!"
             );
 
             return;
         }
 
-        // Verifica se está segurando o regador
+        // =========================
+        // VERIFICAR REGADOR
+        // =========================
+
         if (!loja.EstaSegurandoRegador())
         {
             Debug.Log(
@@ -205,7 +220,6 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-        // Tem regador
         Regar();
     }
 
@@ -215,25 +229,36 @@ public class PlantSpot : MonoBehaviour
 
     void Regar()
     {
+        // Impede regar duas vezes
+        if (foiRegada)
+            return;
+
         foiRegada = true;
 
         // =========================
-        // SOM DE REGAR
+        // SOM
         // =========================
 
         if (regarAudioSource != null &&
             somRegar != null)
         {
-            regarAudioSource.PlayOneShot(somRegar);
+            regarAudioSource.PlayOneShot(
+                somRegar
+            );
         }
 
-        Debug.Log("💧 Planta regada!");
+        Debug.Log(
+            "💧 Planta regada!"
+        );
 
-        // Consome o regador
+        // =========================
+        // CONSUME REGADOR
+        // =========================
+
         loja.UsarRegador();
 
         // =========================
-        // COMEÇA O CRESCIMENTO
+        // CRESCIMENTO
         // =========================
 
         if (!crescendo)
@@ -245,7 +270,7 @@ public class PlantSpot : MonoBehaviour
     }
 
     // =====================================================
-    // CRESCER ÁRVORE
+    // CRESCER
     // =====================================================
 
     System.Collections.IEnumerator CrescerArvore()
@@ -261,7 +286,7 @@ public class PlantSpot : MonoBehaviour
         float tempo = 0f;
 
         // =========================
-        // COMEÇA SOM DE CRESCIMENTO
+        // SOM
         // =========================
 
         if (crescimentoAudioSource != null &&
@@ -286,10 +311,9 @@ public class PlantSpot : MonoBehaviour
         {
             if (arvoreAtual == null)
             {
-                if (crescimentoAudioSource != null)
-                {
-                    crescimentoAudioSource.Stop();
-                }
+                PararSomCrescimento();
+
+                crescendo = false;
 
                 yield break;
             }
@@ -309,28 +333,73 @@ public class PlantSpot : MonoBehaviour
             yield return null;
         }
 
-        // =========================
-        // TAMANHO FINAL
-        // =========================
-
         if (arvoreAtual != null)
         {
             arvoreAtual.transform.localScale =
                 escalaFinal;
         }
 
-        // =========================
-        // PARA O SOM
-        // =========================
+        PararSomCrescimento();
 
+        crescendo = false;
+
+        Debug.Log(
+            "🌳 Árvore cresceu!"
+        );
+    }
+
+    // =====================================================
+    // PARAR SOM
+    // =====================================================
+
+    void PararSomCrescimento()
+    {
         if (crescimentoAudioSource != null)
         {
             crescimentoAudioSource.Stop();
         }
+    }
 
+    // =====================================================
+    // COLHER
+    // =====================================================
+
+    public bool ColherArvore()
+    {
+        // Não existe árvore
+        if (arvoreAtual == null)
+            return false;
+
+        // Se ainda está crescendo,
+        // não permite colher
+        if (crescendo)
+        {
+            Debug.Log(
+                "🌱 Essa árvore ainda está crescendo!"
+            );
+
+            return false;
+        }
+
+        // Para o som
+        PararSomCrescimento();
+
+        // Destrói árvore
+        Destroy(arvoreAtual);
+
+        // =========================
+        // RESET COMPLETO
+        // =========================
+
+        arvoreAtual = null;
+        foiRegada = false;
         crescendo = false;
 
-        Debug.Log("🌳 Árvore cresceu!");
+        Debug.Log(
+            "🚜 Árvore colhida!"
+        );
+
+        return true;
     }
 
     // =====================================================
@@ -351,7 +420,7 @@ public class PlantSpot : MonoBehaviour
             TextAnchor.MiddleCenter;
 
         // =========================
-        // AINDA NÃO PLANTOU
+        // PLANTAR
         // =========================
 
         if (arvoreAtual == null)
@@ -369,7 +438,7 @@ public class PlantSpot : MonoBehaviour
         }
 
         // =========================
-        // PLANTOU, MAS NÃO REGOU
+        // REGAR
         // =========================
 
         else if (!foiRegada)
@@ -387,7 +456,7 @@ public class PlantSpot : MonoBehaviour
         }
 
         // =========================
-        // ESTÁ CRESCENDO
+        // CRESCENDO
         // =========================
 
         else if (crescendo)
@@ -400,6 +469,24 @@ public class PlantSpot : MonoBehaviour
                     60
                 ),
                 "🌱 A ÁRVORE ESTÁ CRESCENDO...",
+                estilo
+            );
+        }
+
+        // =========================
+        // PRONTA
+        // =========================
+
+        else
+        {
+            GUI.Box(
+                new Rect(
+                    Screen.width / 2 - 180,
+                    Screen.height - 150,
+                    360,
+                    60
+                ),
+                "🌳 ÁRVORE PRONTA PARA COLHER!",
                 estilo
             );
         }
