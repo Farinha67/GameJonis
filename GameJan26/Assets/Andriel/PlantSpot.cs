@@ -39,7 +39,11 @@ public class PlantSpot : MonoBehaviour
     void Start()
     {
         // =========================
+<<<<<<< Updated upstream
         // PLAYER
+=======
+        // ENCONTRAR PLAYER
+>>>>>>> Stashed changes
         // =========================
 
         GameObject playerObject =
@@ -52,12 +56,20 @@ public class PlantSpot : MonoBehaviour
         else
         {
             Debug.LogWarning(
+<<<<<<< Updated upstream
                 "❌ Player não encontrado!"
+=======
+                "Player não encontrado! Coloque a Tag 'Player' no Player."
+>>>>>>> Stashed changes
             );
         }
 
         // =========================
+<<<<<<< Updated upstream
         // SHOP
+=======
+        // ENCONTRAR LOJA
+>>>>>>> Stashed changes
         // =========================
 
         loja = FindFirstObjectByType<Shop>();
@@ -65,7 +77,11 @@ public class PlantSpot : MonoBehaviour
         if (loja == null)
         {
             Debug.LogWarning(
+<<<<<<< Updated upstream
                 "❌ Shop não encontrado!"
+=======
+                "Shop não encontrado na cena!"
+>>>>>>> Stashed changes
             );
         }
     }
@@ -76,7 +92,11 @@ public class PlantSpot : MonoBehaviour
             return;
 
         // =========================
+<<<<<<< Updated upstream
         // DISTÂNCIA
+=======
+        // DISTÂNCIA DO PLAYER
+>>>>>>> Stashed changes
         // =========================
 
         float distancia =
@@ -89,7 +109,11 @@ public class PlantSpot : MonoBehaviour
             distancia <= distanciaPlantio;
 
         // =========================
+<<<<<<< Updated upstream
         // SOM DE CRESCIMENTO
+=======
+        // VOLUME DO SOM DE CRESCIMENTO
+>>>>>>> Stashed changes
         // =========================
 
         if (crescimentoAudioSource != null &&
@@ -108,12 +132,20 @@ public class PlantSpot : MonoBehaviour
                 );
         }
 
+<<<<<<< Updated upstream
+=======
+        // =========================
+        // INTERAÇÃO
+        // =========================
+
+>>>>>>> Stashed changes
         if (!playerPerto)
             return;
 
         if (Keyboard.current == null)
             return;
 
+<<<<<<< Updated upstream
         // =========================
         // E
         // =========================
@@ -121,14 +153,31 @@ public class PlantSpot : MonoBehaviour
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             // Se não existe árvore
+=======
+        if (Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            // =========================
+            // PLANTAR
+            // =========================
+
+>>>>>>> Stashed changes
             if (arvoreAtual == null)
             {
                 Plantar();
                 return;
             }
 
+<<<<<<< Updated upstream
             // Se existe árvore e ainda não foi regada
             if (!foiRegada)
+=======
+            // =========================
+            // REGAR
+            // =========================
+
+            if (arvoreAtual != null &&
+                !foiRegada)
+>>>>>>> Stashed changes
             {
                 TentarRegar();
             }
@@ -144,7 +193,11 @@ public class PlantSpot : MonoBehaviour
         if (arvorePrefab == null)
         {
             Debug.LogWarning(
+<<<<<<< Updated upstream
                 "⚠️ Coloque o Prefab da árvore!"
+=======
+                "⚠️ Coloque o Prefab da árvore no PlantSpot!"
+>>>>>>> Stashed changes
             );
 
             return;
@@ -156,6 +209,7 @@ public class PlantSpot : MonoBehaviour
             Quaternion.identity
         );
 
+<<<<<<< Updated upstream
         arvoreAtual.transform.localScale =
             Vector3.one * 0.3f;
 
@@ -171,11 +225,20 @@ public class PlantSpot : MonoBehaviour
 
         // =========================
         // SOM
+=======
+        // Começa com 30% do tamanho
+        arvoreAtual.transform.localScale =
+            Vector3.one * 0.3f;
+
+        // =========================
+        // SOM DE PLANTIO
+>>>>>>> Stashed changes
         // =========================
 
         if (audioSource != null &&
             somPlantio != null)
         {
+<<<<<<< Updated upstream
             audioSource.PlayOneShot(
                 somPlantio
             );
@@ -184,6 +247,12 @@ public class PlantSpot : MonoBehaviour
         Debug.Log(
             "🌱 Semente plantada!"
         );
+=======
+            audioSource.PlayOneShot(somPlantio);
+        }
+
+        Debug.Log("🌱 Semente plantada!");
+>>>>>>> Stashed changes
     }
 
     // =====================================================
@@ -194,6 +263,7 @@ public class PlantSpot : MonoBehaviour
     {
         if (loja == null)
         {
+<<<<<<< Updated upstream
             loja =
                 FindFirstObjectByType<Shop>();
         }
@@ -202,15 +272,23 @@ public class PlantSpot : MonoBehaviour
         {
             Debug.LogWarning(
                 "❌ Shop não encontrado!"
+=======
+            Debug.LogWarning(
+                "Shop não encontrado!"
+>>>>>>> Stashed changes
             );
 
             return;
         }
 
+<<<<<<< Updated upstream
         // =========================
         // VERIFICAR REGADOR
         // =========================
 
+=======
+        // Verifica se está segurando o regador
+>>>>>>> Stashed changes
         if (!loja.EstaSegurandoRegador())
         {
             Debug.Log(
@@ -220,6 +298,10 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
+<<<<<<< Updated upstream
+=======
+        // Tem regador
+>>>>>>> Stashed changes
         Regar();
     }
 
@@ -229,6 +311,7 @@ public class PlantSpot : MonoBehaviour
 
     void Regar()
     {
+<<<<<<< Updated upstream
         // Impede regar duas vezes
         if (foiRegada)
             return;
@@ -237,11 +320,18 @@ public class PlantSpot : MonoBehaviour
 
         // =========================
         // SOM
+=======
+        foiRegada = true;
+
+        // =========================
+        // SOM DE REGAR
+>>>>>>> Stashed changes
         // =========================
 
         if (regarAudioSource != null &&
             somRegar != null)
         {
+<<<<<<< Updated upstream
             regarAudioSource.PlayOneShot(
                 somRegar
             );
@@ -259,6 +349,18 @@ public class PlantSpot : MonoBehaviour
 
         // =========================
         // CRESCIMENTO
+=======
+            regarAudioSource.PlayOneShot(somRegar);
+        }
+
+        Debug.Log("💧 Planta regada!");
+
+        // Consome o regador
+        loja.UsarRegador();
+
+        // =========================
+        // COMEÇA O CRESCIMENTO
+>>>>>>> Stashed changes
         // =========================
 
         if (!crescendo)
@@ -270,7 +372,11 @@ public class PlantSpot : MonoBehaviour
     }
 
     // =====================================================
+<<<<<<< Updated upstream
     // CRESCER
+=======
+    // CRESCER ÁRVORE
+>>>>>>> Stashed changes
     // =====================================================
 
     System.Collections.IEnumerator CrescerArvore()
@@ -286,7 +392,11 @@ public class PlantSpot : MonoBehaviour
         float tempo = 0f;
 
         // =========================
+<<<<<<< Updated upstream
         // SOM
+=======
+        // COMEÇA SOM DE CRESCIMENTO
+>>>>>>> Stashed changes
         // =========================
 
         if (crescimentoAudioSource != null &&
@@ -311,9 +421,16 @@ public class PlantSpot : MonoBehaviour
         {
             if (arvoreAtual == null)
             {
+<<<<<<< Updated upstream
                 PararSomCrescimento();
 
                 crescendo = false;
+=======
+                if (crescimentoAudioSource != null)
+                {
+                    crescimentoAudioSource.Stop();
+                }
+>>>>>>> Stashed changes
 
                 yield break;
             }
@@ -333,12 +450,20 @@ public class PlantSpot : MonoBehaviour
             yield return null;
         }
 
+<<<<<<< Updated upstream
+=======
+        // =========================
+        // TAMANHO FINAL
+        // =========================
+
+>>>>>>> Stashed changes
         if (arvoreAtual != null)
         {
             arvoreAtual.transform.localScale =
                 escalaFinal;
         }
 
+<<<<<<< Updated upstream
         PararSomCrescimento();
 
         crescendo = false;
@@ -354,10 +479,17 @@ public class PlantSpot : MonoBehaviour
 
     void PararSomCrescimento()
     {
+=======
+        // =========================
+        // PARA O SOM
+        // =========================
+
+>>>>>>> Stashed changes
         if (crescimentoAudioSource != null)
         {
             crescimentoAudioSource.Stop();
         }
+<<<<<<< Updated upstream
     }
 
     // =====================================================
@@ -400,6 +532,12 @@ public class PlantSpot : MonoBehaviour
         );
 
         return true;
+=======
+
+        crescendo = false;
+
+        Debug.Log("🌳 Árvore cresceu!");
+>>>>>>> Stashed changes
     }
 
     // =====================================================
@@ -420,7 +558,11 @@ public class PlantSpot : MonoBehaviour
             TextAnchor.MiddleCenter;
 
         // =========================
+<<<<<<< Updated upstream
         // PLANTAR
+=======
+        // AINDA NÃO PLANTOU
+>>>>>>> Stashed changes
         // =========================
 
         if (arvoreAtual == null)
@@ -438,7 +580,11 @@ public class PlantSpot : MonoBehaviour
         }
 
         // =========================
+<<<<<<< Updated upstream
         // REGAR
+=======
+        // PLANTOU, MAS NÃO REGOU
+>>>>>>> Stashed changes
         // =========================
 
         else if (!foiRegada)
@@ -456,7 +602,11 @@ public class PlantSpot : MonoBehaviour
         }
 
         // =========================
+<<<<<<< Updated upstream
         // CRESCENDO
+=======
+        // ESTÁ CRESCENDO
+>>>>>>> Stashed changes
         // =========================
 
         else if (crescendo)
@@ -472,6 +622,7 @@ public class PlantSpot : MonoBehaviour
                 estilo
             );
         }
+<<<<<<< Updated upstream
 
         // =========================
         // PRONTA
@@ -490,5 +641,7 @@ public class PlantSpot : MonoBehaviour
                 estilo
             );
         }
+=======
+>>>>>>> Stashed changes
     }
 }
