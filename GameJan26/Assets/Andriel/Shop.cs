@@ -14,6 +14,11 @@ public class Shop : MonoBehaviour
     [Header("Configuração")]
     public float distanciaLoja = 3f;
 
+    [Header("Sons da Loja")]
+    public AudioSource audioSource;
+    public AudioClip somCompraSemente;
+    public AudioClip somCompraRegador;
+
     private Transform player;
     private PlayerMoney playerMoney;
 
@@ -23,7 +28,6 @@ public class Shop : MonoBehaviour
 
     void Start()
     {
-        // Procura o Player
         GameObject playerObject =
             GameObject.FindGameObjectWithTag("Player");
 
@@ -31,7 +35,6 @@ public class Shop : MonoBehaviour
         {
             player = playerObject.transform;
 
-            // Pega o PlayerMoney do Player
             playerMoney =
                 playerObject.GetComponent<PlayerMoney>();
 
@@ -106,6 +109,12 @@ public class Shop : MonoBehaviour
     {
         if (playerMoney.RemoverDinheiro(precoSemente))
         {
+            // SOM DE COMPRA DA SEMENTE
+            if (audioSource != null && somCompraSemente != null)
+            {
+                audioSource.PlayOneShot(somCompraSemente);
+            }
+
             Debug.Log("🌱 Semente comprada!");
 
             Debug.Log(
@@ -121,7 +130,6 @@ public class Shop : MonoBehaviour
 
     void ComprarRegador()
     {
-        // Já está segurando
         if (regadorNaMao != null)
         {
             Debug.Log(
@@ -149,7 +157,7 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        // Tenta tirar R$15 do dinheiro REAL do Player
+        // Tenta tirar o dinheiro
         if (!playerMoney.RemoverDinheiro(precoRegador))
         {
             return;
@@ -190,6 +198,12 @@ public class Shop : MonoBehaviour
         if (col != null)
         {
             col.enabled = false;
+        }
+
+        // SOM DE COMPRA DO REGADOR
+        if (audioSource != null && somCompraRegador != null)
+        {
+            audioSource.PlayOneShot(somCompraRegador);
         }
 
         Debug.Log("💧 Regador comprado!");
