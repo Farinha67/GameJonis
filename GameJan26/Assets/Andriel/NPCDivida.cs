@@ -24,6 +24,10 @@ public class NPCDivida : MonoBehaviour
     [Header("Tempo entre cobranças")]
     public float tempoEntreCobrancas = 60f;
 
+    [Header("Som de Pagamento")]
+    public AudioSource audioSource;
+    public AudioClip somPagamento;
+
     private int parcelaAtual = 0;
 
     private bool indoAtePlayer = true;
@@ -95,7 +99,6 @@ public class NPCDivida : MonoBehaviour
                 esperando = false;
                 indoAtePlayer = true;
 
-                // NPC volta a aparecer
                 gameObject.SetActive(true);
 
                 Debug.Log(
@@ -238,10 +241,8 @@ public class NPCDivida : MonoBehaviour
                 "Tudo bem, volto mais tarde.\""
             );
 
-            // NPC vai embora
             IrEmbora();
 
-            // Espera 1 minuto
             esperando = true;
             tempoEspera = tempoEntreCobrancas;
 
@@ -257,6 +258,16 @@ public class NPCDivida : MonoBehaviour
 
         if (!pagamento)
             return;
+
+        // =========================
+        // SOM DE PAGAMENTO
+        // =========================
+
+        if (audioSource != null &&
+            somPagamento != null)
+        {
+            audioSource.PlayOneShot(somPagamento);
+        }
 
         Debug.Log(
             "💰 Parcela paga: R$" + valor

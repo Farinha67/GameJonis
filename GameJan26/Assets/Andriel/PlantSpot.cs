@@ -10,6 +10,10 @@ public class PlantSpot : MonoBehaviour
     public float distanciaPlantio = 2f;
     public float tempoParaCrescer = 10f;
 
+    [Header("Som de Plantio")]
+    public AudioSource audioSource;
+    public AudioClip somPlantio;
+
     private Transform player;
     private GameObject arvoreAtual;
 
@@ -21,7 +25,6 @@ public class PlantSpot : MonoBehaviour
 
     void Start()
     {
-        // Procura o Player
         GameObject playerObject =
             GameObject.FindGameObjectWithTag("Player");
 
@@ -36,7 +39,6 @@ public class PlantSpot : MonoBehaviour
             );
         }
 
-        // Procura a loja
         loja = FindFirstObjectByType<Shop>();
 
         if (loja == null)
@@ -67,26 +69,16 @@ public class PlantSpot : MonoBehaviour
         if (Keyboard.current == null)
             return;
 
-        // E
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
-            // =========================
             // PLANTAR
-            // =========================
-
             if (arvoreAtual == null)
             {
                 Plantar();
-
-                // Impede o mesmo E de plantar
-                // e regar ao mesmo tempo
                 return;
             }
 
-            // =========================
             // REGAR
-            // =========================
-
             if (arvoreAtual != null &&
                 !foiRegada)
             {
@@ -119,6 +111,12 @@ public class PlantSpot : MonoBehaviour
         arvoreAtual.transform.localScale =
             Vector3.one * 0.3f;
 
+        // SOM DE PLANTIO
+        if (audioSource != null && somPlantio != null)
+        {
+            audioSource.PlayOneShot(somPlantio);
+        }
+
         Debug.Log("🌱 Semente plantada!");
     }
 
@@ -137,7 +135,6 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-        // NÃO TEM REGADOR
         if (!loja.EstaSegurandoRegador())
         {
             Debug.Log(
@@ -147,7 +144,6 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-        // Tem regador → pode regar
         Regar();
     }
 
@@ -161,10 +157,8 @@ public class PlantSpot : MonoBehaviour
 
         Debug.Log("💧 Planta regada!");
 
-        // CONSOME O REGADOR
         loja.UsarRegador();
 
-        // Começa o crescimento
         if (!crescendo)
         {
             StartCoroutine(
@@ -234,7 +228,6 @@ public class PlantSpot : MonoBehaviour
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
-        // Ainda não plantou
         if (arvoreAtual == null)
         {
             GUI.Box(
@@ -248,8 +241,6 @@ public class PlantSpot : MonoBehaviour
                 estilo
             );
         }
-
-        // Plantou, mas não regou
         else if (!foiRegada)
         {
             GUI.Box(
@@ -263,8 +254,6 @@ public class PlantSpot : MonoBehaviour
                 estilo
             );
         }
-
-        // Já foi regada
         else if (crescendo)
         {
             GUI.Box(
