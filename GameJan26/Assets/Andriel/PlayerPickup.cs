@@ -9,10 +9,20 @@ public class PlayerPickup : MonoBehaviour
     [Header("Pickup")]
     public float pickupDistance = 3f;
 
+    [Header("Pickup Sound")]
+    public AudioSource pickupAudioSource;
+    public AudioClip pickupSound;
+
+    [Header("Drop Sound")]
+    public AudioClip dropSound;
+
     private GameObject heldObject;
 
     void Update()
     {
+        if (Keyboard.current == null)
+            return;
+
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             if (heldObject == null)
@@ -58,6 +68,12 @@ public class PlayerPickup : MonoBehaviour
 
                 heldObject.transform.localPosition = Vector3.zero;
                 heldObject.transform.localRotation = Quaternion.identity;
+
+                // Som de pegar
+                if (pickupAudioSource != null && pickupSound != null)
+                {
+                    pickupAudioSource.PlayOneShot(pickupSound);
+                }
             }
         }
     }
@@ -83,6 +99,12 @@ public class PlayerPickup : MonoBehaviour
         if (col != null)
         {
             col.enabled = true;
+        }
+
+        // Som de soltar
+        if (pickupAudioSource != null && dropSound != null)
+        {
+            pickupAudioSource.PlayOneShot(dropSound);
         }
 
         heldObject = null;
