@@ -25,8 +25,8 @@ public class NPCDivida : MonoBehaviour
     public float tempoEntreCobrancas = 60f;
 
     [Header("Som de Pagamento")]
-    public AudioSource audioSource;
-    public AudioClip somPagamento;
+    public AudioSource audioPagamento;
+    public float volumePagamento = 1f;
 
     private int parcelaAtual = 0;
 
@@ -76,6 +76,23 @@ public class NPCDivida : MonoBehaviour
             Debug.LogError(
                 "❌ PlayerMoney não encontrado no Player!"
             );
+        }
+
+        // =========================
+        // VERIFICAR AUDIO SOURCE
+        // =========================
+
+        if (audioPagamento == null)
+        {
+            Debug.LogWarning(
+                "⚠️ Audio Source do pagamento não foi colocado no Inspector!"
+            );
+        }
+        else
+        {
+            audioPagamento.playOnAwake = false;
+            audioPagamento.loop = false;
+            audioPagamento.volume = volumePagamento;
         }
     }
 
@@ -263,10 +280,33 @@ public class NPCDivida : MonoBehaviour
         // SOM DE PAGAMENTO
         // =========================
 
-        if (audioSource != null &&
-            somPagamento != null)
+        if (audioPagamento != null)
         {
-            audioSource.PlayOneShot(somPagamento);
+            audioPagamento.volume = volumePagamento;
+
+            // PlayOneShot permite tocar o pagamento
+            // sem precisar interromper outro som
+            // que esteja sendo reproduzido pelo AudioSource.
+
+            if (audioPagamento.clip != null)
+            {
+                audioPagamento.PlayOneShot(
+                    audioPagamento.clip,
+                    volumePagamento
+                );
+            }
+            else
+            {
+                Debug.LogWarning(
+                    "⚠️ O Audio Source do pagamento não possui um AudioClip!"
+                );
+            }
+        }
+        else
+        {
+            Debug.LogWarning(
+                "⚠️ Audio Source do pagamento não foi configurado!"
+            );
         }
 
         Debug.Log(
@@ -278,7 +318,10 @@ public class NPCDivida : MonoBehaviour
             playerMoney.GetDinheiro()
         );
 
-        // Próxima parcela
+        // =========================
+        // PRÓXIMA PARCELA
+        // =========================
+
         parcelaAtual++;
 
         cobrando = false;
@@ -369,17 +412,18 @@ public class NPCDivida : MonoBehaviour
             "=============================="
         );
 
-        // NPC vai embora
         Vector3 direcao =
             transform.position -
             player.position;
 
         direcao.y = 0;
 
-        transform.position +=
-            direcao.normalized * 10f;
+        if (direcao != Vector3.zero)
+        {
+            transform.position +=
+                direcao.normalized * 10f;
+        }
 
-        // Desaparece
         Destroy(gameObject);
     }
 

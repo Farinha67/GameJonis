@@ -14,6 +14,19 @@ public class PlantSpot : MonoBehaviour
     public AudioSource audioSource;
     public AudioClip somPlantio;
 
+    [Header("Som de Regar")]
+    public AudioSource regarAudioSource;
+    public AudioClip somRegar;
+
+    [Header("Som de Crescimento")]
+    public AudioSource crescimentoAudioSource;
+    public AudioClip somCrescimento;
+
+    [Header("Distância do Som de Crescimento")]
+    public float distanciaMaximaSom = 15f;
+    public float volumeMaximo = 1f;
+    public float volumeMinimo = 0f;
+
     private Transform player;
     private GameObject arvoreAtual;
 
@@ -25,6 +38,10 @@ public class PlantSpot : MonoBehaviour
 
     void Start()
     {
+        // =========================
+        // ENCONTRAR PLAYER
+        // =========================
+
         GameObject playerObject =
             GameObject.FindGameObjectWithTag("Player");
 
@@ -38,6 +55,10 @@ public class PlantSpot : MonoBehaviour
                 "Player não encontrado! Coloque a Tag 'Player' no Player."
             );
         }
+
+        // =========================
+        // ENCONTRAR LOJA
+        // =========================
 
         loja = FindFirstObjectByType<Shop>();
 
@@ -54,6 +75,10 @@ public class PlantSpot : MonoBehaviour
         if (player == null)
             return;
 
+        // =========================
+        // DISTÂNCIA DO PLAYER
+        // =========================
+
         float distancia =
             Vector3.Distance(
                 transform.position,
@@ -63,6 +88,30 @@ public class PlantSpot : MonoBehaviour
         playerPerto =
             distancia <= distanciaPlantio;
 
+        // =========================
+        // VOLUME DO SOM DE CRESCIMENTO
+        // =========================
+
+        if (crescimentoAudioSource != null &&
+            crescimentoAudioSource.isPlaying)
+        {
+            float porcentagemDistancia =
+                Mathf.Clamp01(
+                    distancia / distanciaMaximaSom
+                );
+
+            crescimentoAudioSource.volume =
+                Mathf.Lerp(
+                    volumeMaximo,
+                    volumeMinimo,
+                    porcentagemDistancia
+                );
+        }
+
+        // =========================
+        // INTERAÇÃO
+        // =========================
+
         if (!playerPerto)
             return;
 
@@ -71,14 +120,20 @@ public class PlantSpot : MonoBehaviour
 
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
+            // =========================
             // PLANTAR
+            // =========================
+
             if (arvoreAtual == null)
             {
                 Plantar();
                 return;
             }
 
+            // =========================
             // REGAR
+            // =========================
+
             if (arvoreAtual != null &&
                 !foiRegada)
             {
@@ -87,9 +142,9 @@ public class PlantSpot : MonoBehaviour
         }
     }
 
-    // =========================
+    // =====================================================
     // PLANTAR
-    // =========================
+    // =====================================================
 
     void Plantar()
     {
@@ -108,11 +163,16 @@ public class PlantSpot : MonoBehaviour
             Quaternion.identity
         );
 
+        // Começa com 30% do tamanho
         arvoreAtual.transform.localScale =
             Vector3.one * 0.3f;
 
+        // =========================
         // SOM DE PLANTIO
-        if (audioSource != null && somPlantio != null)
+        // =========================
+
+        if (audioSource != null &&
+            somPlantio != null)
         {
             audioSource.PlayOneShot(somPlantio);
         }
@@ -120,9 +180,9 @@ public class PlantSpot : MonoBehaviour
         Debug.Log("🌱 Semente plantada!");
     }
 
-    // =========================
+    // =====================================================
     // TENTAR REGAR
-    // =========================
+    // =====================================================
 
     void TentarRegar()
     {
@@ -135,6 +195,7 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
+        // Verifica se está segurando o regador
         if (!loja.EstaSegurandoRegador())
         {
             Debug.Log(
@@ -144,20 +205,36 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
+        // Tem regador
         Regar();
     }
 
-    // =========================
+    // =====================================================
     // REGAR
-    // =========================
+    // =====================================================
 
     void Regar()
     {
         foiRegada = true;
 
+        // =========================
+        // SOM DE REGAR
+        // =========================
+
+        if (regarAudioSource != null &&
+            somRegar != null)
+        {
+            regarAudioSource.PlayOneShot(somRegar);
+        }
+
         Debug.Log("💧 Planta regada!");
 
+        // Consome o regador
         loja.UsarRegador();
+
+        // =========================
+        // COMEÇA O CRESCIMENTO
+        // =========================
 
         if (!crescendo)
         {
@@ -167,9 +244,9 @@ public class PlantSpot : MonoBehaviour
         }
     }
 
-    // =========================
-    // CRESCER
-    // =========================
+    // =====================================================
+    // CRESCER ÁRVORE
+    // =====================================================
 
     System.Collections.IEnumerator CrescerArvore()
     {
@@ -183,10 +260,39 @@ public class PlantSpot : MonoBehaviour
 
         float tempo = 0f;
 
+        // =========================
+        // COMEÇA SOM DE CRESCIMENTO
+        // =========================
+
+        if (crescimentoAudioSource != null &&
+            somCrescimento != null)
+        {
+            crescimentoAudioSource.clip =
+                somCrescimento;
+
+            crescimentoAudioSource.loop = true;
+
+            crescimentoAudioSource.volume =
+                volumeMaximo;
+
+            crescimentoAudioSource.Play();
+        }
+
+        // =========================
+        // CRESCIMENTO
+        // =========================
+
         while (tempo < tempoParaCrescer)
         {
             if (arvoreAtual == null)
+            {
+                if (crescimentoAudioSource != null)
+                {
+                    crescimentoAudioSource.Stop();
+                }
+
                 yield break;
+            }
 
             tempo += Time.deltaTime;
 
@@ -203,18 +309,33 @@ public class PlantSpot : MonoBehaviour
             yield return null;
         }
 
+        // =========================
+        // TAMANHO FINAL
+        // =========================
+
         if (arvoreAtual != null)
         {
             arvoreAtual.transform.localScale =
                 escalaFinal;
         }
 
+        // =========================
+        // PARA O SOM
+        // =========================
+
+        if (crescimentoAudioSource != null)
+        {
+            crescimentoAudioSource.Stop();
+        }
+
+        crescendo = false;
+
         Debug.Log("🌳 Árvore cresceu!");
     }
 
-    // =========================
+    // =====================================================
     // TEXTO
-    // =========================
+    // =====================================================
 
     void OnGUI()
     {
@@ -225,8 +346,13 @@ public class PlantSpot : MonoBehaviour
             new GUIStyle(GUI.skin.box);
 
         estilo.fontSize = 20;
+
         estilo.alignment =
             TextAnchor.MiddleCenter;
+
+        // =========================
+        // AINDA NÃO PLANTOU
+        // =========================
 
         if (arvoreAtual == null)
         {
@@ -241,6 +367,11 @@ public class PlantSpot : MonoBehaviour
                 estilo
             );
         }
+
+        // =========================
+        // PLANTOU, MAS NÃO REGOU
+        // =========================
+
         else if (!foiRegada)
         {
             GUI.Box(
@@ -254,6 +385,11 @@ public class PlantSpot : MonoBehaviour
                 estilo
             );
         }
+
+        // =========================
+        // ESTÁ CRESCENDO
+        // =========================
+
         else if (crescendo)
         {
             GUI.Box(
