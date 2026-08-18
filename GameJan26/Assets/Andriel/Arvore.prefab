@@ -15,7 +15,11 @@ GameObject:
   - component: {fileID: 4772581065782836686}
   m_Layer: 0
   m_Name: Arvore
+<<<<<<< Updated upstream
   m_TagString: Arvore
+=======
+  m_TagString: Untagged
+>>>>>>> Stashed changes
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
