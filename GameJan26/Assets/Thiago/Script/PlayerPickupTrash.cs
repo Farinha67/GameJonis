@@ -1,99 +1,145 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerPickupTrash : MonoBehaviour
 {
-    [Header("Holding Point")]
-    public Transform holdingPoint;
+    [Header("Holding Points")]
+    public Transform leftHoldingPoint;
+    public Transform rightHoldingPoint;
 
     [Header("Pickup")]
     public float pickupDistance = 3f;
 
-    private GameObject heldTrash;
+    private GameObject leftTrash;
+    private GameObject rightTrash;
 
     void Update()
     {
-        if (Keyboard.current != null &&
-            Keyboard.current.eKey.wasPressedThisFrame)
+        if (Keyboard.current == null)
+            return;
+
+        if (Keyboard.current.eKey.wasPressedThisFrame)
         {
-            if (heldTrash == null)
-            {
-                TryPickupTrash();
-            }
-            else
-            {
-                DropTrash();
-            }
+            HandlePickupDrop();
         }
     }
 
-    void TryPickupTrash()
+    void HandlePickupDrop()
     {
         Ray ray = new Ray(
             Camera.main.transform.position,
             Camera.main.transform.forward
         );
 
+        // Primeiro verifica o que o jogador está mirando
         if (Physics.Raycast(ray, out RaycastHit hit, pickupDistance))
         {
-            // S� pode pegar objetos com a tag Trash
+            // Está mirando em um lixo
             if (hit.collider.CompareTag("Trash"))
             {
-                heldTrash = hit.collider.gameObject;
+                GameObject trash = hit.collider.gameObject;
 
-                Rigidbody rb = heldTrash.GetComponent<Rigidbody>();
+                // Não deixa pegar o mesmo lixo duas vezes
+                if (trash == leftTrash || trash == rightTrash)
+                    return;
 
-                if (rb != null)
+                // Coloca na primeira mão disponível
+                if (leftTrash == null)
                 {
-                    rb.isKinematic = true;
-                    rb.useGravity = false;
+                    leftTrash = trash;
+                    AttachTrash(leftTrash, leftHoldingPoint);
+                    return;
                 }
 
-                Collider col = heldTrash.GetComponent<Collider>();
-
-                if (col != null)
+                if (rightTrash == null)
                 {
-                    col.enabled = false;
+                    rightTrash = trash;
+                    AttachTrash(rightTrash, rightHoldingPoint);
+                    return;
                 }
 
-                heldTrash.transform.SetParent(holdingPoint);
-
-                heldTrash.transform.localPosition = Vector3.zero;
-                heldTrash.transform.localRotation = Quaternion.identity;
+                // As duas mãos estão ocupadas
+                return;
             }
+        }
+
+        // Não está mirando em lixo → solta
+        DropAvailableTrash();
+    }
+
+    void AttachTrash(GameObject trash, Transform holdingPoint)
+    {
+        Rigidbody rb = trash.GetComponent<Rigidbody>();
+
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
+        Collider col = trash.GetComponent<Collider>();
+
+        if (col != null)
+        {
+            col.enabled = false;
+        }
+
+        trash.transform.SetParent(holdingPoint);
+
+        trash.transform.localPosition = Vector3.zero;
+        trash.transform.localRotation = Quaternion.identity;
+    }
+
+    void DropAvailableTrash()
+    {
+        // Se tiver lixo na mão direita, solta ele primeiro
+        if (rightTrash != null)
+        {
+            DropTrash(ref rightTrash);
+            return;
+        }
+
+        // Senão, solta o da mão esquerda
+        if (leftTrash != null)
+        {
+            DropTrash(ref leftTrash);
+            return;
         }
     }
 
-    void DropTrash()
+    void DropTrash(ref GameObject trash)
     {
-        if (heldTrash == null)
+        if (trash == null)
             return;
 
-        // Procura todas as lixeiras
+        // Verifica se o lixo está dentro de alguma lixeira
         TrashBin[] trashBins = FindObjectsOfType<TrashBin>();
 
         foreach (TrashBin trashBin in trashBins)
         {
-            if (trashBin.IsInside(heldTrash.transform.position))
+            if (trashBin.IsInside(trash.transform.position))
             {
                 Debug.Log("Lixo jogado na lixeira!");
 
-                Destroy(heldTrash);
-
-                heldTrash = null;
+                Destroy(trash);
+                trash = null;
 
                 return;
             }
         }
 
-        // Se n�o estiver na lixeira, solta normalmente
-        heldTrash.transform.SetParent(null);
-
-        heldTrash.transform.position =
+        // Posição para soltar
+        Vector3 dropPosition =
             Camera.main.transform.position +
-            Camera.main.transform.forward * 1.5f;
+            Camera.main.transform.forward * 0.5f;
 
-        Rigidbody rb = heldTrash.GetComponent<Rigidbody>();
+        // Tira da mão
+        trash.transform.SetParent(null);
+
+        trash.transform.position = dropPosition;
+
+        // Reativa física
+        Rigidbody rb = trash.GetComponent<Rigidbody>();
 
         if (rb != null)
         {
@@ -101,13 +147,14 @@ public class PlayerPickupTrash : MonoBehaviour
             rb.useGravity = true;
         }
 
-        Collider col = heldTrash.GetComponent<Collider>();
+        // Reativa colisão
+        Collider col = trash.GetComponent<Collider>();
 
         if (col != null)
         {
             col.enabled = true;
         }
 
-        heldTrash = null;
+        trash = null;
     }
 }
