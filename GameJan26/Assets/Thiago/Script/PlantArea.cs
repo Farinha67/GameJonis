@@ -8,7 +8,7 @@ public class PlantArea : MonoBehaviour
     [Header("Visual")]
     public bool mostrarAreaNoEditor = true;
 
-    [Header("Área de plantio")]
+    [Header("Área de Plantio")]
     public float alturaPermitida = 2f;
 
     private void Reset()
@@ -29,7 +29,7 @@ public class PlantArea : MonoBehaviour
     }
 
     // =====================================================
-    // VERIFICAR SE PODE PLANTAR
+    // PODE PLANTAR
     // =====================================================
 
     public bool PodePlantar(Vector3 ponto)
@@ -40,11 +40,8 @@ public class PlantArea : MonoBehaviour
         if (areaPlantio.sharedMesh == null)
             return false;
 
-        // Primeiro verifica se o ponto está próximo
-        // da área da Mesh.
         Bounds bounds = areaPlantio.bounds;
 
-        // Permite uma pequena tolerância vertical.
         bounds.Expand(
             new Vector3(
                 0f,
@@ -56,8 +53,7 @@ public class PlantArea : MonoBehaviour
         if (!bounds.Contains(ponto))
             return false;
 
-        // Cria um raio para baixo.
-        Ray raio =
+        Ray ray =
             new Ray(
                 ponto + Vector3.up * 0.5f,
                 Vector3.down
@@ -65,25 +61,22 @@ public class PlantArea : MonoBehaviour
 
         RaycastHit hit;
 
-        // Verifica especificamente o Mesh Collider
         if (areaPlantio.Raycast(
-                raio,
+                ray,
                 out hit,
                 alturaPermitida + 1f))
         {
             return true;
         }
 
-        // Segunda tentativa:
-        // raio vindo de baixo para cima.
-        Ray raioBaixo =
+        Ray ray2 =
             new Ray(
                 ponto + Vector3.down * 0.5f,
                 Vector3.up
             );
 
         if (areaPlantio.Raycast(
-                raioBaixo,
+                ray2,
                 out hit,
                 alturaPermitida + 1f))
         {
@@ -94,7 +87,7 @@ public class PlantArea : MonoBehaviour
     }
 
     // =====================================================
-    // VISUAL NO EDITOR
+    // VISUAL
     // =====================================================
 
     private void OnDrawGizmos()
@@ -103,7 +96,8 @@ public class PlantArea : MonoBehaviour
             return;
 
         if (areaPlantio == null)
-            areaPlantio = GetComponent<MeshCollider>();
+            areaPlantio =
+                GetComponent<MeshCollider>();
 
         if (areaPlantio == null)
             return;
