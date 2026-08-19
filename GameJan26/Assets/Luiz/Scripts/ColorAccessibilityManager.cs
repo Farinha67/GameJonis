@@ -15,7 +15,7 @@ public class ColorAccessibilityManager : MonoBehaviour
     [Header("Material do filtro de daltonismo")]
     public Material colorBlindnessMaterial;
 
-    // Nome da propriedade criada no Shader Graph
+    
     private const string ShaderProperty = "_ColorMode";
 
     public ColorMode CurrentMode { get; private set; }
@@ -40,7 +40,7 @@ public class ColorAccessibilityManager : MonoBehaviour
     {
         CurrentMode = mode;
 
-        // Salva a escolha
+        
         PlayerPrefs.SetInt(SaveKey, (int)mode);
         PlayerPrefs.Save();
 
