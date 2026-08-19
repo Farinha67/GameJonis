@@ -11,18 +11,18 @@ public class Colheitadeira : MonoBehaviour
     public float distanciaParaColher = 4f;
 
     // =====================================================
-    // PAGAMENTO
-    // =====================================================
-
-    [Header("Pagamento")]
-    public int dinheiroPorArvore = 50;
-
-    // =====================================================
     // PLAYER
     // =====================================================
 
     private Transform player;
     private PlayerMoney playerMoney;
+
+    // =====================================================
+    // CÂMERA
+    // =====================================================
+
+    [Header("Câmera")]
+    public Camera cam;
 
     // =====================================================
     // START
@@ -31,9 +31,7 @@ public class Colheitadeira : MonoBehaviour
     private void Start()
     {
         GameObject objPlayer =
-            GameObject.FindGameObjectWithTag(
-                "Player"
-            );
+            GameObject.FindGameObjectWithTag("Player");
 
         if (objPlayer != null)
         {
@@ -44,17 +42,29 @@ public class Colheitadeira : MonoBehaviour
                 objPlayer.GetComponent<PlayerMoney>();
         }
 
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
+
         if (player == null)
         {
             Debug.LogError(
-                "❌ Player não encontrado!"
+                "❌ Player não encontrado! Verifique a Tag Player."
             );
         }
 
         if (playerMoney == null)
         {
             Debug.LogError(
-                "❌ PlayerMoney não encontrado!"
+                "❌ PlayerMoney não encontrado no Player!"
+            );
+        }
+
+        if (cam == null)
+        {
+            Debug.LogError(
+                "❌ Câmera não encontrada!"
             );
         }
     }
@@ -65,10 +75,6 @@ public class Colheitadeira : MonoBehaviour
 
     private void Update()
     {
-        if (player == null ||
-            playerMoney == null)
-            return;
-
         if (Keyboard.current == null)
             return;
 
@@ -78,6 +84,10 @@ public class Colheitadeira : MonoBehaviour
 
         if (Keyboard.current.fKey.wasPressedThisFrame)
         {
+            Debug.Log(
+                "⌨️ F pressionado!"
+            );
+
             TentarColher();
         }
     }
@@ -88,6 +98,50 @@ public class Colheitadeira : MonoBehaviour
 
     private void TentarColher()
     {
+        // =================================================
+        // VERIFICAR PLAYER
+        // =================================================
+
+        if (player == null)
+        {
+            Debug.LogError(
+                "❌ Player está NULL!"
+            );
+
+            return;
+        }
+
+        if (playerMoney == null)
+        {
+            Debug.LogError(
+                "❌ PlayerMoney está NULL!"
+            );
+
+            return;
+        }
+
+        // =================================================
+        // VERIFICAR CÂMERA
+        // =================================================
+
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
+
+        if (cam == null)
+        {
+            Debug.LogError(
+                "❌ Camera está NULL!"
+            );
+
+            return;
+        }
+
+        // =================================================
+        // DISTÂNCIA DA COLHEITADEIRA
+        // =================================================
+
         float distanciaPlayer =
             Vector3.Distance(
                 transform.position,
@@ -104,23 +158,105 @@ public class Colheitadeira : MonoBehaviour
             return;
         }
 
-        PlantSpot[] spots =
-            FindObjectsByType<PlantSpot>(
-                FindObjectsSortMode.None
+        // =================================================
+        // RAYCAST PELO CENTRO DA TELA
+        // =================================================
+
+        Ray ray =
+            cam.ViewportPointToRay(
+                new Vector3(
+                    0.5f,
+                    0.5f,
+                    0f
+                )
             );
 
-        int quantidadeColhida = 0;
+        Debug.DrawRay(
+            ray.origin,
+            ray.direction * distanciaParaColher,
+            Color.green,
+            2f
+        );
 
-        foreach (PlantSpot spot in spots)
+        RaycastHit[] hits =
+            Physics.RaycastAll(
+                ray,
+                distanciaParaColher,
+                ~0,
+                QueryTriggerInteraction.Collide
+            );
+
+        // =================================================
+        // NENHUM COLLIDER
+        // =================================================
+
+        if (hits == null ||
+            hits.Length == 0)
         {
+            Debug.Log(
+                "❌ O Raycast não acertou nenhum objeto."
+            );
+
+            return;
+        }
+
+        // =================================================
+        // ORDENAR
+        // =================================================
+
+        System.Array.Sort(
+            hits,
+            (a, b) =>
+                a.distance.CompareTo(
+                    b.distance
+                )
+        );
+
+        // =================================================
+        // PROCURAR PLANTSPOT
+        // =================================================
+
+        foreach (RaycastHit hit in hits)
+        {
+            Debug.Log(
+                "🎯 Raycast acertou: " +
+                hit.collider.name
+            );
+
+            PlantSpot spot =
+                EncontrarPlantSpot(
+                    hit.collider
+                );
+
             if (spot == null)
+            {
+                Debug.Log(
+                    "⚠️ Esse objeto não possui PlantSpot."
+                );
+
                 continue;
+            }
+
+            Debug.Log(
+                "🌳 PlantSpot encontrado!"
+            );
+
+            // =================================================
+            // VERIFICAR ÁRVORE
+            // =================================================
 
             if (!spot.TemArvore())
-                continue;
+            {
+                Debug.Log(
+                    "❌ Esse PlantSpot não possui árvore."
+                );
 
-            if (!spot.PodeColher())
                 continue;
+            }
+
+            // =================================================
+            // DISTÂNCIA DA ÁRVORE
+            // =================================================
 
             Vector3 posicaoArvore =
                 spot.GetPosicaoArvore();
@@ -134,69 +270,154 @@ public class Colheitadeira : MonoBehaviour
             if (distanciaArvore >
                 distanciaParaColher)
             {
-                continue;
-            }
-
-            if (spot.ColherArvore())
-            {
-                quantidadeColhida++;
-
                 Debug.Log(
-                    "🌳 Árvore colhida!"
+                    "❌ Árvore está muito longe da colheitadeira."
                 );
+
+                return;
             }
-        }
 
-        // =================================================
-        // NENHUMA
-        // =================================================
+            // =================================================
+            // VERIFICAR SE ESTÁ PRONTA
+            // =================================================
 
-        if (quantidadeColhida == 0)
-        {
+            if (!spot.PodeColher())
+            {
+                Debug.Log(
+                    "🌱 Essa árvore ainda não está pronta para colher."
+                );
+
+                return;
+            }
+
+            // =================================================
+            // PEGAR VALOR
+            // =================================================
+
+            int valor =
+                spot.GetValorColheita();
+
             Debug.Log(
-                "❌ Nenhuma árvore pronta dentro do alcance."
+                "💰 Valor da árvore: R$" +
+                valor
             );
+
+            // =================================================
+            // COLHER
+            // =================================================
+
+            bool colheu =
+                spot.ColherArvore();
+
+            if (!colheu)
+            {
+                Debug.Log(
+                    "❌ Não foi possível colher a árvore."
+                );
+
+                return;
+            }
+
+            // =================================================
+            // PAGAR
+            // =================================================
+
+            playerMoney.AdicionarDinheiro(
+                valor
+            );
+
+            Debug.Log(
+                "=============================="
+            );
+
+            Debug.Log(
+                "🚜 ÁRVORE COLHIDA!"
+            );
+
+            Debug.Log(
+                "💰 Dinheiro ganho: R$" +
+                valor
+            );
+
+            Debug.Log(
+                "💵 Saldo atual: R$" +
+                playerMoney.GetDinheiro()
+            );
+
+            Debug.Log(
+                "=============================="
+            );
+
+            // =================================================
+            // IMPORTANTE:
+            // PARA AQUI.
+            // NÃO COLHE OUTRAS ÁRVORES.
+            // =================================================
 
             return;
         }
 
+        Debug.Log(
+            "❌ Nenhuma árvore válida foi encontrada na mira."
+        );
+    }
+
+    // =====================================================
+    // ENCONTRAR PLANTSPOT
+    // =====================================================
+
+    private PlantSpot EncontrarPlantSpot(
+        Collider collider)
+    {
+        if (collider == null)
+            return null;
+
         // =================================================
-        // PAGAMENTO
+        // 1 - PRÓPRIO OBJETO
         // =================================================
 
-        int dinheiroGanho =
-            quantidadeColhida *
-            dinheiroPorArvore;
+        PlantSpot spot =
+            collider.GetComponent<PlantSpot>();
 
-        playerMoney.AdicionarDinheiro(
-            dinheiroGanho
-        );
+        if (spot != null)
+            return spot;
 
-        Debug.Log(
-            "=============================="
-        );
+        // =================================================
+        // 2 - PAI
+        // =================================================
 
-        Debug.Log(
-            "🚜 COLHEITA CONCLUÍDA!"
-        );
+        spot =
+            collider.GetComponentInParent<PlantSpot>();
 
-        Debug.Log(
-            "🌳 Árvores colhidas: " +
-            quantidadeColhida
-        );
+        if (spot != null)
+            return spot;
 
-        Debug.Log(
-            "💰 Dinheiro ganho: R$" +
-            dinheiroGanho
-        );
+        // =================================================
+        // 3 - FILHOS
+        // =================================================
 
-        Debug.Log(
-            "💵 Saldo atual: R$" +
-            playerMoney.GetDinheiro()
-        );
+        spot =
+            collider.GetComponentInChildren<PlantSpot>();
 
-        Debug.Log(
-            "=============================="
-        );
+        if (spot != null)
+            return spot;
+
+        // =================================================
+        // 4 - PROCURAR NA ÁRVORE
+        // =================================================
+
+        Transform raiz =
+            collider.transform.root;
+
+        if (raiz != null)
+        {
+            spot =
+                raiz.GetComponentInChildren<PlantSpot>();
+
+            if (spot != null)
+                return spot;
+        }
+
+        return null;
     }
 }

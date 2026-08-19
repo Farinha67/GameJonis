@@ -3,179 +3,243 @@ using UnityEngine.InputSystem;
 
 public class PlayerPickupTrash : MonoBehaviour
 {
+    // =====================================================
+    // HOLDING POINTS
+    // =====================================================
+
     [Header("Holding Points")]
     public Transform leftHoldingPoint;
     public Transform rightHoldingPoint;
 
+    // =====================================================
+    // PICKUP
+    // =====================================================
+
     [Header("Pickup")]
     public float pickupDistance = 3f;
+
+    [Header("Camada do Lixo")]
+    public LayerMask camadaDoLixo = ~0;
+
+    // =====================================================
+    // PROTEÇÃO CONTRA PAREDES
+    // =====================================================
+
+    [Header("Proteção contra paredes")]
+    public float distanciaVerificacaoParede = 2.5f;
+
+    public float distanciaVoltaParede = 0.8f;
+
+    public float alturaVoltaParede = 1.0f;
+
+    public float forcaVoltaParede = 2f;
+
+    // =====================================================
+    // SONS
+    // =====================================================
 
     [Header("Sons do Lixo")]
     public AudioSource audioSource;
 
-    // Som quando pega o lixo
     public AudioClip somColeta;
-
-    // Som diferente quando solta no chão
     public AudioClip somSoltar;
-
-    // Som diferente quando coloca na lixeira
     public AudioClip somLixeira;
+
+    // =====================================================
+    // LIXOS NAS MÃOS
+    // =====================================================
 
     private GameObject leftTrash;
     private GameObject rightTrash;
+
+    // =====================================================
+    // PLAYER MONEY
+    // =====================================================
+
+    private PlayerMoney playerMoney;
+
+    // =====================================================
+    // TASK MANAGER
+    // =====================================================
+
+    private TrashTaskManager taskManager;
+
+    // =====================================================
+    // START
+    // =====================================================
+
+    private void Start()
+    {
+        playerMoney =
+            GetComponent<PlayerMoney>();
+
+        taskManager =
+            FindFirstObjectByType<TrashTaskManager>();
+
+        if (playerMoney == null)
+        {
+            Debug.LogError(
+                "❌ PlayerMoney não encontrado no Player!"
+            );
+        }
+
+        if (taskManager == null)
+        {
+            Debug.LogWarning(
+                "⚠️ TrashTaskManager não encontrado!"
+            );
+        }
+    }
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     private void Update()
     {
         if (Keyboard.current == null)
             return;
 
-        // G = pegar / soltar lixo
-        if (Keyboard.current.gKey.wasPressedThisFrame)
+        // =================================================
+        // E = PEGAR / SOLTAR
+        // =================================================
+
+        if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             HandlePickupDrop();
         }
     }
 
+    // =====================================================
+    // PEGAR / SOLTAR
+    // =====================================================
+
     private void HandlePickupDrop()
     {
-        Camera cam = Camera.main;
+        Camera cam =
+            Camera.main;
 
         if (cam == null)
-            return;
+        {
+            Debug.LogError(
+                "❌ Camera.main não encontrada!"
+            );
 
-        Ray ray = new Ray(
-            cam.transform.position,
-            cam.transform.forward
+            return;
+        }
+
+        // =================================================
+        // RAYCAST
+        // =================================================
+
+        Ray ray =
+            new Ray(
+                cam.transform.position,
+                cam.transform.forward
+            );
+
+        RaycastHit[] hits =
+            Physics.RaycastAll(
+                ray,
+                pickupDistance,
+                camadaDoLixo,
+                QueryTriggerInteraction.Collide
+            );
+
+        // =================================================
+        // ORDENAR POR DISTÂNCIA
+        // =================================================
+
+        System.Array.Sort(
+            hits,
+            (a, b) =>
+                a.distance.CompareTo(
+                    b.distance
+                )
         );
 
-        if (Physics.Raycast(
-            ray,
-            out RaycastHit hit,
-            pickupDistance,
-            ~0,
-            QueryTriggerInteraction.Collide))
+        // =================================================
+        // PROCURAR LIXO
+        // =================================================
+
+        foreach (RaycastHit hit in hits)
         {
             GameObject trash =
-                EncontrarLixo(hit.collider);
+                EncontrarLixo(
+                    hit.collider
+                );
 
-            if (trash != null)
+            if (trash == null)
+                continue;
+
+            // =================================================
+            // JÁ ESTÁ NA MÃO
+            // =================================================
+
+            if (trash == leftTrash ||
+                trash == rightTrash)
             {
-                // Não pode pegar o mesmo lixo duas vezes
-                if (trash == leftTrash ||
-                    trash == rightTrash)
-                {
-                    return;
-                }
+                return;
+            }
 
-                // =========================================
-                // MÃO ESQUERDA
-                // =========================================
+            // =================================================
+            // MÃO ESQUERDA
+            // =================================================
 
-                if (leftTrash == null)
-                {
-                    leftTrash = trash;
+            if (leftTrash == null)
+            {
+                leftTrash =
+                    trash;
 
-                    AttachTrash(
-                        leftTrash,
-                        leftHoldingPoint
-                    );
+                AttachTrash(
+                    leftTrash,
+                    leftHoldingPoint
+                );
 
-                    // 🔊 SOM DE COLETA
-                    TocarSomColeta();
-
-                    Debug.Log(
-                        "🗑️ Lixo na mão esquerda."
-                    );
-
-                    return;
-                }
-
-                // =========================================
-                // MÃO DIREITA
-                // =========================================
-
-                if (rightTrash == null)
-                {
-                    rightTrash = trash;
-
-                    AttachTrash(
-                        rightTrash,
-                        rightHoldingPoint
-                    );
-
-                    // 🔊 SOM DE COLETA
-                    TocarSomColeta();
-
-                    Debug.Log(
-                        "🗑️ Lixo na mão direita."
-                    );
-
-                    return;
-                }
+                TocarSomColeta();
 
                 Debug.Log(
-                    "❌ As duas mãos estão ocupadas."
+                    "🗑️ Lixo na mão esquerda."
                 );
 
                 return;
             }
+
+            // =================================================
+            // MÃO DIREITA
+            // =================================================
+
+            if (rightTrash == null)
+            {
+                rightTrash =
+                    trash;
+
+                AttachTrash(
+                    rightTrash,
+                    rightHoldingPoint
+                );
+
+                TocarSomColeta();
+
+                Debug.Log(
+                    "🗑️ Lixo na mão direita."
+                );
+
+                return;
+            }
+
+            Debug.Log(
+                "❌ As duas mãos estão ocupadas."
+            );
+
+            return;
         }
 
-        // Se não encontrou lixo,
-        // tenta soltar o que está segurando
+        // =================================================
+        // NÃO ESTÁ MIRANDO EM LIXO
+        // =================================================
+
         DropAvailableTrash();
-    }
-
-    // =====================================================
-    // SOM DE COLETA
-    // =====================================================
-
-    private void TocarSomColeta()
-    {
-        if (audioSource == null)
-            return;
-
-        if (somColeta == null)
-            return;
-
-        audioSource.PlayOneShot(
-            somColeta
-        );
-    }
-
-    // =====================================================
-    // SOM DE SOLTAR NO CHÃO
-    // =====================================================
-
-    private void TocarSomSoltar()
-    {
-        if (audioSource == null)
-            return;
-
-        if (somSoltar == null)
-            return;
-
-        audioSource.PlayOneShot(
-            somSoltar
-        );
-    }
-
-    // =====================================================
-    // SOM DA LIXEIRA
-    // =====================================================
-
-    private void TocarSomLixeira()
-    {
-        if (audioSource == null)
-            return;
-
-        if (somLixeira == null)
-            return;
-
-        audioSource.PlayOneShot(
-            somLixeira
-        );
     }
 
     // =====================================================
@@ -188,20 +252,76 @@ public class PlayerPickupTrash : MonoBehaviour
         if (collider == null)
             return null;
 
-        // Verifica o próprio objeto
-        if (collider.CompareTag("Trash"))
-            return collider.gameObject;
+        // =================================================
+        // PRÓPRIO OBJETO
+        // =================================================
 
-        // Verifica os pais
+        if (collider.CompareTag("Trash"))
+        {
+            return collider.gameObject;
+        }
+
+        // =================================================
+        // PAIS
+        // =================================================
+
         Transform atual =
             collider.transform;
 
         while (atual != null)
         {
             if (atual.CompareTag("Trash"))
+            {
                 return atual.gameObject;
+            }
 
-            atual = atual.parent;
+            atual =
+                atual.parent;
+        }
+
+        // =================================================
+        // FILHOS
+        // =================================================
+
+        Transform[] filhos =
+            collider.GetComponentsInChildren<Transform>(
+                true
+            );
+
+        foreach (Transform filho in filhos)
+        {
+            if (filho.CompareTag("Trash"))
+            {
+                return filho.gameObject;
+            }
+        }
+
+        // =================================================
+        // RIGIDBODY PAI
+        // =================================================
+
+        Rigidbody rb =
+            collider.GetComponentInParent<Rigidbody>();
+
+        if (rb != null)
+        {
+            if (rb.gameObject.CompareTag("Trash"))
+            {
+                return rb.gameObject;
+            }
+
+            Transform[] rbFilhos =
+                rb.GetComponentsInChildren<Transform>(
+                    true
+                );
+
+            foreach (Transform filho in rbFilhos)
+            {
+                if (filho.CompareTag("Trash"))
+                {
+                    return rb.gameObject;
+                }
+            }
         }
 
         return null;
@@ -215,17 +335,45 @@ public class PlayerPickupTrash : MonoBehaviour
         GameObject trash,
         Transform holdingPoint)
     {
-        if (trash == null ||
-            holdingPoint == null)
+        if (trash == null)
             return;
+
+        if (holdingPoint == null)
+        {
+            Debug.LogError(
+                "❌ Holding Point não configurado!"
+            );
+
+            return;
+        }
+
+        // =================================================
+        // GUARDAR TAMANHO REAL
+        // =================================================
+
+        Vector3 escalaMundialOriginal =
+            trash.transform.lossyScale;
+
+        // =================================================
+        // RIGIDBODY
+        // =================================================
 
         Rigidbody rb =
             trash.GetComponent<Rigidbody>();
 
+        if (rb == null)
+        {
+            rb =
+                trash.GetComponentInChildren<Rigidbody>();
+        }
+
         if (rb != null)
         {
-            rb.isKinematic = true;
-            rb.useGravity = false;
+            rb.isKinematic =
+                true;
+
+            rb.useGravity =
+                false;
 
             rb.linearVelocity =
                 Vector3.zero;
@@ -234,34 +382,71 @@ public class PlayerPickupTrash : MonoBehaviour
                 Vector3.zero;
         }
 
-        // Desativa os colliders
+        // =================================================
+        // DESATIVAR COLLIDERS
+        // =================================================
+
         Collider[] cols =
-            trash.GetComponentsInChildren<Collider>();
+            trash.GetComponentsInChildren<Collider>(
+                true
+            );
 
         foreach (Collider col in cols)
         {
-            col.enabled = false;
+            col.enabled =
+                false;
         }
 
-        // Coloca na mão
+        // =================================================
+        // COLOCAR NA MÃO
+        // =================================================
+
         trash.transform.SetParent(
-            holdingPoint
+            holdingPoint,
+            true
         );
 
-        trash.transform.localPosition =
-            Vector3.zero;
+        trash.transform.position =
+            holdingPoint.position;
 
-        trash.transform.localRotation =
-            Quaternion.identity;
+        trash.transform.rotation =
+            holdingPoint.rotation;
+
+        // =================================================
+        // RESTAURAR TAMANHO MUNDIAL
+        // =================================================
+
+        Vector3 escalaPai =
+            holdingPoint.lossyScale;
+
+        if (Mathf.Abs(escalaPai.x) > 0.0001f &&
+            Mathf.Abs(escalaPai.y) > 0.0001f &&
+            Mathf.Abs(escalaPai.z) > 0.0001f)
+        {
+            trash.transform.localScale =
+                new Vector3(
+                    escalaMundialOriginal.x /
+                    escalaPai.x,
+
+                    escalaMundialOriginal.y /
+                    escalaPai.y,
+
+                    escalaMundialOriginal.z /
+                    escalaPai.z
+                );
+        }
     }
 
     // =====================================================
-    // SOLTAR LIXO
+    // SOLTAR LIXO DISPONÍVEL
     // =====================================================
 
     private void DropAvailableTrash()
     {
-        // Primeiro tenta soltar da mão direita
+        // =================================================
+        // PRIMEIRO DIREITA
+        // =================================================
+
         if (rightTrash != null)
         {
             DropTrash(
@@ -271,7 +456,10 @@ public class PlayerPickupTrash : MonoBehaviour
             return;
         }
 
-        // Depois tenta soltar da mão esquerda
+        // =================================================
+        // DEPOIS ESQUERDA
+        // =================================================
+
         if (leftTrash != null)
         {
             DropTrash(
@@ -287,7 +475,7 @@ public class PlayerPickupTrash : MonoBehaviour
     }
 
     // =====================================================
-    // SOLTAR UM LIXO
+    // SOLTAR LIXO
     // =====================================================
 
     private void DropTrash(
@@ -296,9 +484,9 @@ public class PlayerPickupTrash : MonoBehaviour
         if (trash == null)
             return;
 
-        // =========================================
-        // VERIFICA SE ESTÁ EM UMA LIXEIRA
-        // =========================================
+        // =================================================
+        // VERIFICAR LIXEIRAS PRIMEIRO
+        // =================================================
 
         TrashBin[] bins =
             FindObjectsByType<TrashBin>(
@@ -313,89 +501,511 @@ public class PlayerPickupTrash : MonoBehaviour
             if (bin.IsInside(
                 trash.transform.position))
             {
-                // 🔊 SOM DIFERENTE DA LIXEIRA
-                TocarSomLixeira();
-
-                Destroy(trash);
-
-                trash = null;
-
-                Debug.Log(
-                    "🗑️ Lixo colocado na lixeira!"
+                ColocarNaLixeira(
+                    ref trash
                 );
 
                 return;
             }
         }
 
-        // =========================================
-        // POSIÇÃO PARA SOLTAR NO CHÃO
-        // =========================================
+        // =================================================
+        // CÂMERA
+        // =================================================
 
         Camera cam =
             Camera.main;
 
-        Vector3 dropPosition;
+        Vector3 origem;
+
+        Vector3 direcao;
 
         if (cam != null)
         {
-            dropPosition =
+            origem =
+                cam.transform.position;
+
+            direcao =
+                cam.transform.forward;
+        }
+        else
+        {
+            origem =
+                transform.position +
+                Vector3.up * 1.5f;
+
+            direcao =
+                transform.forward;
+        }
+
+        // =================================================
+        // DETECTAR PAREDE NA FRENTE
+        // =================================================
+
+        RaycastHit paredeHit;
+
+        bool bateuEmAlgo =
+            Physics.Raycast(
+                origem,
+                direcao,
+                out paredeHit,
+                distanciaVerificacaoParede,
+                ~0,
+                QueryTriggerInteraction.Ignore
+            );
+
+        if (bateuEmAlgo)
+        {
+            // =================================================
+            // IGNORAR O PRÓPRIO PLAYER
+            // =================================================
+
+            if (paredeHit.collider.transform.IsChildOf(
+                transform))
+            {
+                bateuEmAlgo = false;
+            }
+        }
+
+        // =================================================
+        // VERIFICAR SE É PAREDE
+        // =================================================
+
+        if (bateuEmAlgo)
+        {
+            float verticalidade =
+                Mathf.Abs(
+                    Vector3.Dot(
+                        paredeHit.normal,
+                        Vector3.up
+                    )
+                );
+
+            // =================================================
+            // SUPERFÍCIE VERTICAL = PAREDE
+            // =================================================
+
+            if (verticalidade < 0.5f)
+            {
+                VoltarLixoDaParede(
+                    ref trash,
+                    direcao
+                );
+
+                return;
+            }
+        }
+
+        // =================================================
+        // POSIÇÃO NORMAL DE SOLTAR
+        // =================================================
+
+        Vector3 origemDrop;
+
+        if (cam != null)
+        {
+            origemDrop =
                 cam.transform.position +
                 cam.transform.forward *
                 1.5f;
         }
         else
         {
-            dropPosition =
+            origemDrop =
                 transform.position +
                 transform.forward *
                 1.5f;
         }
 
-        // =========================================
-        // TIRA DA MÃO
-        // =========================================
+        // =================================================
+        // PROCURAR O CHÃO
+        // =================================================
 
-        trash.transform.SetParent(null);
+        Ray ray =
+            new Ray(
+                origemDrop +
+                Vector3.up * 5f,
+
+                Vector3.down
+            );
+
+        RaycastHit hit;
+
+        bool encontrouChao =
+            Physics.Raycast(
+                ray,
+                out hit,
+                20f,
+                ~0,
+                QueryTriggerInteraction.Ignore
+            );
+
+        Vector3 dropPosition;
+
+        if (encontrouChao)
+        {
+            // =================================================
+            // PEGAR COLLIDER DO LIXO
+            // =================================================
+
+            Collider lixoCollider =
+                trash.GetComponentInChildren<Collider>();
+
+            float alturaLixo =
+                0.5f;
+
+            if (lixoCollider != null)
+            {
+                alturaLixo =
+                    lixoCollider.bounds.extents.y;
+            }
+
+            // =================================================
+            // COLOCAR ACIMA DO CHÃO
+            // =================================================
+
+            dropPosition =
+                hit.point +
+                Vector3.up *
+                (alturaLixo + 0.05f);
+        }
+        else
+        {
+            dropPosition =
+                origemDrop;
+        }
+
+        // =================================================
+        // TIRAR DA MÃO
+        // =================================================
+
+        trash.transform.SetParent(
+            null,
+            true
+        );
 
         trash.transform.position =
             dropPosition;
 
-        // =========================================
-        // REATIVA RIGIDBODY
-        // =========================================
+        // =================================================
+        // RIGIDBODY
+        // =================================================
 
         Rigidbody rb =
             trash.GetComponent<Rigidbody>();
 
-        if (rb != null)
+        if (rb == null)
         {
-            rb.isKinematic = false;
-            rb.useGravity = true;
+            rb =
+                trash.GetComponentInChildren<Rigidbody>();
         }
 
-        // =========================================
-        // REATIVA COLLIDERS
-        // =========================================
+        if (rb != null)
+        {
+            rb.isKinematic =
+                false;
+
+            rb.useGravity =
+                true;
+
+            rb.linearVelocity =
+                Vector3.zero;
+
+            rb.angularVelocity =
+                Vector3.zero;
+        }
+
+        // =================================================
+        // REATIVAR COLLIDERS
+        // =================================================
 
         Collider[] cols =
-            trash.GetComponentsInChildren<Collider>();
+            trash.GetComponentsInChildren<Collider>(
+                true
+            );
 
         foreach (Collider col in cols)
         {
-            col.enabled = true;
+            col.enabled =
+                true;
         }
 
-        // =========================================
-        // 🔊 SOM DE SOLTAR
-        // =========================================
+        // =================================================
+        // SOM
+        // =================================================
 
         TocarSomSoltar();
 
         Debug.Log(
-            "🗑️ Lixo solto no chão!"
+            "🗑️ Lixo colocado no chão."
         );
 
-        trash = null;
+        trash =
+            null;
+    }
+
+    // =====================================================
+    // LIXO BATEU NA PAREDE
+    // =====================================================
+
+    private void VoltarLixoDaParede(
+        ref GameObject trash,
+        Vector3 direcao)
+    {
+        if (trash == null)
+            return;
+
+        Debug.Log(
+            "🧱 Lixo bateu na parede! Voltando para o jogador."
+        );
+
+        // =================================================
+        // POSIÇÃO DE RETORNO
+        // =================================================
+
+        Vector3 voltarPosition =
+            transform.position +
+            transform.forward *
+            distanciaVoltaParede +
+            Vector3.up *
+            alturaVoltaParede;
+
+        // =================================================
+        // TIRAR DA MÃO
+        // =================================================
+
+        trash.transform.SetParent(
+            null,
+            true
+        );
+
+        trash.transform.position =
+            voltarPosition;
+
+        // =================================================
+        // RIGIDBODY
+        // =================================================
+
+        Rigidbody rb =
+            trash.GetComponent<Rigidbody>();
+
+        if (rb == null)
+        {
+            rb =
+                trash.GetComponentInChildren<Rigidbody>();
+        }
+
+        if (rb != null)
+        {
+            rb.isKinematic =
+                false;
+
+            rb.useGravity =
+                true;
+
+            // =================================================
+            // IMPULSO PARA TRÁS
+            // =================================================
+
+            rb.linearVelocity =
+                -direcao *
+                forcaVoltaParede;
+
+            rb.angularVelocity =
+                Vector3.zero;
+        }
+
+        // =================================================
+        // REATIVAR COLLIDERS
+        // =================================================
+
+        Collider[] cols =
+            trash.GetComponentsInChildren<Collider>(
+                true
+            );
+
+        foreach (Collider col in cols)
+        {
+            col.enabled =
+                true;
+        }
+
+        // =================================================
+        // SOM
+        // =================================================
+
+        TocarSomSoltar();
+
+        // =================================================
+        // LIMPAR REFERÊNCIA
+        // =================================================
+
+        trash =
+            null;
+    }
+
+    // =====================================================
+    // COLOCAR NA LIXEIRA
+    // =====================================================
+
+    private void ColocarNaLixeira(
+        ref GameObject trash)
+    {
+        if (trash == null)
+            return;
+
+        // =================================================
+        // ENCONTRAR VALOR
+        // =================================================
+
+        TrashValue valor =
+            EncontrarTrashValue(
+                trash
+            );
+
+        // =================================================
+        // PAGAMENTO
+        // =================================================
+
+        if (valor != null)
+        {
+            int dinheiroGanho =
+                valor.ReceberValor();
+
+            if (dinheiroGanho > 0)
+            {
+                if (playerMoney != null)
+                {
+                    playerMoney.AdicionarDinheiro(
+                        dinheiroGanho
+                    );
+                }
+
+                Debug.Log(
+                    "💰 Você ganhou R$" +
+                    dinheiroGanho +
+                    " pelo lixo!"
+                );
+            }
+
+            // =================================================
+            // ATUALIZAR TAREFA
+            // =================================================
+
+            if (taskManager == null)
+            {
+                taskManager =
+                    FindFirstObjectByType<TrashTaskManager>();
+            }
+
+            if (taskManager != null)
+            {
+                taskManager.LixoColocadoNaLixeira(
+                    valor
+                );
+            }
+        }
+        else
+        {
+            Debug.LogWarning(
+                "⚠️ Esse lixo não possui TrashValue!"
+            );
+        }
+
+        // =================================================
+        // SOM
+        // =================================================
+
+        TocarSomLixeira();
+
+        // =================================================
+        // DESTRUIR
+        // =================================================
+
+        Destroy(
+            trash
+        );
+
+        trash =
+            null;
+
+        Debug.Log(
+            "🗑️ Lixo colocado na lixeira!"
+        );
+    }
+
+    // =====================================================
+    // ENCONTRAR TRASH VALUE
+    // =====================================================
+
+    private TrashValue EncontrarTrashValue(
+        GameObject trash)
+    {
+        if (trash == null)
+            return null;
+
+        TrashValue valor =
+            trash.GetComponent<TrashValue>();
+
+        if (valor != null)
+            return valor;
+
+        valor =
+            trash.GetComponentInParent<TrashValue>();
+
+        if (valor != null)
+            return valor;
+
+        valor =
+            trash.GetComponentInChildren<TrashValue>(
+                true
+            );
+
+        return valor;
+    }
+
+    // =====================================================
+    // SOM DE COLETA
+    // =====================================================
+
+    private void TocarSomColeta()
+    {
+        if (audioSource == null ||
+            somColeta == null)
+            return;
+
+        audioSource.PlayOneShot(
+            somColeta
+        );
+    }
+
+    // =====================================================
+    // SOM DE SOLTAR
+    // =====================================================
+
+    private void TocarSomSoltar()
+    {
+        if (audioSource == null ||
+            somSoltar == null)
+            return;
+
+        audioSource.PlayOneShot(
+            somSoltar
+        );
+    }
+
+    // =====================================================
+    // SOM DA LIXEIRA
+    // =====================================================
+
+    private void TocarSomLixeira()
+    {
+        if (audioSource == null ||
+            somLixeira == null)
+            return;
+
+        audioSource.PlayOneShot(
+            somLixeira
+        );
     }
 }

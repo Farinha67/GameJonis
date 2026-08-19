@@ -17,8 +17,11 @@ public class PlantSpot : MonoBehaviour
 
     [Header("Configuração")]
     public float distanciaPlantio = 5f;
-
     public float distanciaEntreArvores = 0.35f;
+
+    // =====================================================
+    // CRESCIMENTO
+    // =====================================================
 
     [Header("Crescimento")]
     public float tempoParaCrescer = 10f;
@@ -38,29 +41,24 @@ public class PlantSpot : MonoBehaviour
     public LayerMask camadaDoChao = ~0;
 
     // =====================================================
-    // TAMANHO DA ÁRVORE
+    // TAMANHO
     // =====================================================
 
     [Header("Tamanho das Árvores")]
 
-    [Tooltip("Tamanho mínimo.")]
     public float tamanhoMinimo = 0.8f;
 
-    [Tooltip("Tamanho máximo de uma árvore gigante.")]
     public float tamanhoMaximo = 2.5f;
 
-    [Tooltip("Chance de nascer uma árvore colossal.")]
     [Range(0f, 1f)]
     public float chanceColossal = 0.03f;
 
-    [Tooltip("Tamanho mínimo da colossal.")]
     public float tamanhoMinimoColossal = 3.5f;
 
-    [Tooltip("Tamanho máximo da colossal.")]
     public float tamanhoMaximoColossal = 5f;
 
     // =====================================================
-    // MULTIPLICADOR DE DINHEIRO
+    // DINHEIRO
     // =====================================================
 
     [Header("Dinheiro por Tamanho")]
@@ -70,6 +68,15 @@ public class PlantSpot : MonoBehaviour
     public float multiplicadorMaximo = 2.5f;
 
     public float multiplicadorColossal = 5f;
+
+    // =====================================================
+    // TAMANHO INICIAL
+    // =====================================================
+
+    [Header("Tamanho Inicial")]
+
+    [Range(0.01f, 1f)]
+    public float porcentagemTamanhoInicial = 0.3f;
 
     // =====================================================
     // SONS
@@ -89,16 +96,22 @@ public class PlantSpot : MonoBehaviour
 
     [Header("Distância do Som")]
     public float distanciaMaximaSom = 15f;
+
     public float volumeMaximo = 1f;
+
     public float volumeMinimo = 0f;
 
     // =====================================================
-    // PLAYER / SHOP / CAMERA
+    // PLAYER
     // =====================================================
 
     private Transform player;
+
     private Shop loja;
+
     private Camera cam;
+
+    private RegadorPickup regadorPickup;
 
     // =====================================================
     // ÁRVORE
@@ -117,11 +130,14 @@ public class PlantSpot : MonoBehaviour
     public bool terminouDeCrescer;
 
     // =====================================================
-    // DADOS DA ÁRVORE
+    // DADOS
     // =====================================================
 
     private float tamanhoArvore = 1f;
+
     private float multiplicadorDinheiro = 1f;
+
+    private int valorBaseArvore = 0;
 
     // =====================================================
     // START
@@ -136,6 +152,9 @@ public class PlantSpot : MonoBehaviour
         {
             player =
                 playerObject.transform;
+
+            regadorPickup =
+                playerObject.GetComponent<RegadorPickup>();
         }
 
         loja =
@@ -147,8 +166,11 @@ public class PlantSpot : MonoBehaviour
         if (controladorDePlantio)
         {
             arvoreAtual = null;
+
             foiRegada = false;
+
             crescendo = false;
+
             terminouDeCrescer = false;
         }
     }
@@ -162,6 +184,7 @@ public class PlantSpot : MonoBehaviour
         if (!controladorDePlantio)
         {
             AtualizarSomCrescimento();
+
             return;
         }
 
@@ -198,10 +221,6 @@ public class PlantSpot : MonoBehaviour
                 )
             );
 
-        // =================================================
-        // PRIMEIRO: ÁRVORE
-        // =================================================
-
         RaycastHit[] hits =
             Physics.RaycastAll(
                 ray,
@@ -217,6 +236,10 @@ public class PlantSpot : MonoBehaviour
                     b.distance
                 )
         );
+
+        // =================================================
+        // PRIMEIRO: PROCURAR ÁRVORE
+        // =================================================
 
         foreach (RaycastHit hit in hits)
         {
@@ -257,11 +280,11 @@ public class PlantSpot : MonoBehaviour
         // =================================================
 
         if (!Physics.Raycast(
-                ray,
-                out RaycastHit hitChao,
-                distanciaPlantio,
-                camadaDoChao,
-                QueryTriggerInteraction.Collide))
+            ray,
+            out RaycastHit hitChao,
+            distanciaPlantio,
+            camadaDoChao,
+            QueryTriggerInteraction.Collide))
         {
             Debug.Log(
                 "❌ Nenhum chão válido encontrado."
@@ -334,7 +357,7 @@ public class PlantSpot : MonoBehaviour
         }
 
         // =================================================
-        // DISTÂNCIA ENTRE ÁRVORES
+        // DISTÂNCIA
         // =================================================
 
         if (!PodePlantarAqui(ponto))
@@ -369,7 +392,8 @@ public class PlantSpot : MonoBehaviour
         if (spot != null)
             return spot;
 
-        return collider.GetComponentInChildren<PlantSpot>();
+        return
+            collider.GetComponentInChildren<PlantSpot>();
     }
 
     // =====================================================
@@ -434,9 +458,8 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-        // =================================================
-        // CRIAR
-        // =================================================
+        int valorSemente =
+            loja.GetValorSementeSelecionada();
 
         GameObject novaArvore =
             Instantiate(
@@ -454,7 +477,7 @@ public class PlantSpot : MonoBehaviour
         );
 
         // =================================================
-        // SPOT
+        // CRIAR SPOT
         // =================================================
 
         GameObject objetoSpot =
@@ -493,7 +516,9 @@ public class PlantSpot : MonoBehaviour
         novoSpot.camadaDoChao =
             camadaDoChao;
 
-        // Copiar configurações.
+        // =================================================
+        // TAMANHOS
+        // =================================================
 
         novoSpot.tamanhoMinimo =
             tamanhoMinimo;
@@ -518,6 +543,16 @@ public class PlantSpot : MonoBehaviour
 
         novoSpot.multiplicadorColossal =
             multiplicadorColossal;
+
+        novoSpot.porcentagemTamanhoInicial =
+            porcentagemTamanhoInicial;
+
+        // =================================================
+        // VALOR
+        // =================================================
+
+        novoSpot.valorBaseArvore =
+            valorSemente;
 
         // =================================================
         // SONS
@@ -595,8 +630,19 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
-            "📏 Tamanho: " +
+            "📏 Tamanho final sorteado: " +
             tamanhoArvore
+        );
+
+        Debug.Log(
+            "🌱 Tamanho inicial: " +
+            tamanhoArvore *
+            porcentagemTamanhoInicial
+        );
+
+        Debug.Log(
+            "🌱 Valor da semente: R$" +
+            valorSemente
         );
 
         Debug.Log(
@@ -614,10 +660,6 @@ public class PlantSpot : MonoBehaviour
     {
         float sorteio =
             Random.value;
-
-        // =================================================
-        // COLOSSAL
-        // =================================================
 
         if (sorteio < chanceColossal)
         {
@@ -653,13 +695,17 @@ public class PlantSpot : MonoBehaviour
                 );
         }
 
+        float tamanhoInicial =
+            tamanhoArvore *
+            porcentagemTamanhoInicial;
+
         arvore.transform.localScale =
             Vector3.one *
-            tamanhoArvore;
+            tamanhoInicial;
     }
 
     // =====================================================
-    // REGAR
+    // TENTAR REGAR
     // =====================================================
 
     public void TentarRegar()
@@ -667,16 +713,33 @@ public class PlantSpot : MonoBehaviour
         if (foiRegada)
             return;
 
-        if (loja == null)
+        // =================================================
+        // PEGAR REGADOR DO PLAYER
+        // =================================================
+
+        if (regadorPickup == null)
         {
-            loja =
-                FindFirstObjectByType<Shop>();
+            if (player != null)
+            {
+                regadorPickup =
+                    player.GetComponent<RegadorPickup>();
+            }
         }
 
-        if (loja == null)
-            return;
+        if (regadorPickup == null)
+        {
+            Debug.LogError(
+                "❌ RegadorPickup não encontrado no Player!"
+            );
 
-        if (!loja.EstaSegurandoRegador())
+            return;
+        }
+
+        // =================================================
+        // VERIFICAR REGADOR
+        // =================================================
+
+        if (!regadorPickup.EstaSegurandoRegador())
         {
             Debug.Log(
                 "❌ Você precisa estar segurando o regador!"
@@ -684,6 +747,39 @@ public class PlantSpot : MonoBehaviour
 
             return;
         }
+
+        // =================================================
+        // VERIFICAR ÁGUA
+        // =================================================
+
+        if (!regadorPickup.TemAgua())
+        {
+            Debug.Log(
+                "❌ O regador está vazio! Vá até o poço."
+            );
+
+            return;
+        }
+
+        // =================================================
+        // GASTAR ÁGUA
+        // =================================================
+
+        bool usouAgua =
+            regadorPickup.UsarAgua();
+
+        if (!usouAgua)
+        {
+            Debug.Log(
+                "❌ Não foi possível usar a água."
+            );
+
+            return;
+        }
+
+        // =================================================
+        // REGAR
+        // =================================================
 
         Regar();
     }
@@ -708,8 +804,6 @@ public class PlantSpot : MonoBehaviour
             );
         }
 
-        loja.UsarRegador();
-
         Debug.Log(
             "💧 ÁRVORE REGADA!"
         );
@@ -733,7 +827,10 @@ public class PlantSpot : MonoBehaviour
 
         Vector3 escalaInicial =
             Vector3.one *
-            (tamanhoArvore * 0.3f);
+            (
+                tamanhoArvore *
+                porcentagemTamanhoInicial
+            );
 
         Vector3 escalaFinal =
             Vector3.one *
@@ -745,8 +842,7 @@ public class PlantSpot : MonoBehaviour
                 escalaInicial;
         }
 
-        float tempo =
-            0f;
+        float tempo = 0f;
 
         if (crescimentoAudioSource != null &&
             somCrescimento != null)
@@ -789,11 +885,18 @@ public class PlantSpot : MonoBehaviour
                     tempoParaCrescer
                 );
 
+            float crescimentoSuave =
+                Mathf.SmoothStep(
+                    0f,
+                    1f,
+                    porcentagem
+                );
+
             arvoreAtual.transform.localScale =
                 Vector3.Lerp(
                     escalaInicial,
                     escalaFinal,
-                    porcentagem
+                    crescimentoSuave
                 );
 
             yield return null;
@@ -826,10 +929,15 @@ public class PlantSpot : MonoBehaviour
             "💰 Multiplicador: x" +
             multiplicadorDinheiro
         );
+
+        Debug.Log(
+            "💵 Valor: R$" +
+            GetValorColheita()
+        );
     }
 
     // =====================================================
-    // SOM
+    // SOM CRESCIMENTO
     // =====================================================
 
     private void AtualizarSomCrescimento()
@@ -931,25 +1039,16 @@ public class PlantSpot : MonoBehaviour
     }
 
     // =====================================================
-    // VALOR FINAL
+    // VALOR
     // =====================================================
 
     public int GetValorColheita()
     {
-        if (loja == null)
-        {
-            loja =
-                FindFirstObjectByType<Shop>();
-        }
-
-        if (loja == null)
+        if (valorBaseArvore <= 0)
             return 0;
 
-        int valorBase =
-            loja.GetValorSementeSelecionada();
-
         return Mathf.RoundToInt(
-            valorBase *
+            valorBaseArvore *
             multiplicadorDinheiro
         );
     }
@@ -982,6 +1081,11 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
+            "💰 Multiplicador: x" +
+            multiplicadorDinheiro
+        );
+
+        Debug.Log(
             "💰 Valor: R$" +
             valor
         );
@@ -1002,6 +1106,9 @@ public class PlantSpot : MonoBehaviour
 
         terminouDeCrescer =
             false;
+
+        valorBaseArvore =
+            0;
 
         Destroy(arvore);
 
@@ -1063,9 +1170,22 @@ public class PlantSpot : MonoBehaviour
             {
                 if (!spot.foiRegada)
                 {
-                    MostrarTexto(
-                        "💧 PRESSIONE E PARA REGAR"
-                    );
+                    if (
+                        regadorPickup != null &&
+                        regadorPickup.EstaSegurandoRegador() &&
+                        regadorPickup.TemAgua()
+                    )
+                    {
+                        MostrarTexto(
+                            "💧 PRESSIONE E PARA REGAR"
+                        );
+                    }
+                    else
+                    {
+                        MostrarTexto(
+                            "💧 PEGUE ÁGUA NO POÇO"
+                        );
+                    }
                 }
                 else if (spot.crescendo)
                 {
