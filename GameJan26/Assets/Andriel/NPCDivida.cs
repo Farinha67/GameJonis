@@ -3,45 +3,89 @@ using UnityEngine.InputSystem;
 
 public class NPCDivida : MonoBehaviour
 {
+    // =====================================================
+    // PLAYER
+    // =====================================================
+
     [Header("Player")]
     public Transform player;
 
+    // =====================================================
+    // MOVIMENTO
+    // =====================================================
+
     [Header("Movimento")]
-    public float velocidade = 2.5f;
+    public float velocidade = 1.5f;
     public float distanciaParar = 2f;
+
+    // =====================================================
+    // DISTÂNCIA PARA COBRAR
+    // =====================================================
 
     [Header("Distância para cobrar")]
     public float distanciaParaCobrar = 2.5f;
 
-    [Header("Player Money")]
+    // =====================================================
+    // DINHEIRO DO PLAYER
+    // =====================================================
+
     private PlayerMoney playerMoney;
 
-    [Header("Parcelas")]
-    public int parcela1 = 100;
-    public int parcela2 = 150;
-    public int parcela3 = 200;
+    // =====================================================
+    // ANIMAÇÃO
+    // =====================================================
 
-    [Header("Tempo entre cobranças")]
-    public float tempoEntreCobrancas = 60f;
+    [Header("Animação")]
+    public Animator animator;
+
+    // =====================================================
+    // PARCELAS
+    // =====================================================
+
+    [Header("Parcelas")]
+    public int parcela1 = 150;
+    public int parcela2 = 250;
+    public int parcela3 = 350;
+
+    // =====================================================
+    // TEMPO
+    // =====================================================
+
+    [Header("Tempo das cobranças")]
+    public float primeiraCobranca = 30f;
+    public float tempoEntreCobrancas = 30f;
+
+    // =====================================================
+    // SOM
+    // =====================================================
 
     [Header("Som de Pagamento")]
     public AudioSource audioPagamento;
+    public AudioClip somPagamento;
     public float volumePagamento = 1f;
+
+    // =====================================================
+    // ESTADO
+    // =====================================================
 
     private int parcelaAtual = 0;
 
-    private bool indoAtePlayer = true;
+    private bool indoAtePlayer = false;
     private bool esperando = false;
     private bool cobrando = false;
     private bool dividaQuitada = false;
 
     private float tempoEspera = 0f;
 
+    // =====================================================
+    // START
+    // =====================================================
+
     void Start()
     {
-        // =========================
+        // -------------------------------------------------
         // ENCONTRAR PLAYER
-        // =========================
+        // -------------------------------------------------
 
         if (player == null)
         {
@@ -54,81 +98,121 @@ public class NPCDivida : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning(
-                    "❌ Player não encontrado! " +
-                    "Coloque a Tag Player no seu Player."
+                Debug.LogError(
+                    "❌ NPCDivida: Player não encontrado! " +
+                    "Coloque a Tag 'Player' no Player."
                 );
+
+                return;
             }
         }
 
-        // =========================
+        // -------------------------------------------------
         // ENCONTRAR PLAYER MONEY
-        // =========================
+        // -------------------------------------------------
 
-        if (player != null)
-        {
-            playerMoney =
-                player.GetComponent<PlayerMoney>();
-        }
+        playerMoney =
+            player.GetComponent<PlayerMoney>();
 
         if (playerMoney == null)
         {
             Debug.LogError(
-                "❌ PlayerMoney não encontrado no Player!"
+                "❌ NPCDivida: PlayerMoney não encontrado no Player!"
             );
         }
 
-        // =========================
-        // VERIFICAR AUDIO SOURCE
-        // =========================
+        // -------------------------------------------------
+        // ENCONTRAR ANIMATOR
+        // -------------------------------------------------
 
-        if (audioPagamento == null)
+        if (animator == null)
+        {
+            animator =
+                GetComponent<Animator>();
+        }
+
+        if (animator == null)
         {
             Debug.LogWarning(
-                "⚠️ Audio Source do pagamento não foi colocado no Inspector!"
+                "⚠️ NPCDivida: Animator não encontrado no NPC."
             );
         }
-        else
+
+        // -------------------------------------------------
+        // CONFIGURAR SOM
+        // -------------------------------------------------
+
+        if (audioPagamento != null)
         {
             audioPagamento.playOnAwake = false;
             audioPagamento.loop = false;
             audioPagamento.volume = volumePagamento;
         }
+
+        // -------------------------------------------------
+        // COMEÇA PARADO
+        // -------------------------------------------------
+
+        AtualizarAnimacao(false);
+
+        // -------------------------------------------------
+        // PRIMEIRA COBRANÇA
+        // -------------------------------------------------
+
+        esperando = true;
+        tempoEspera = primeiraCobranca;
+
+        Debug.Log(
+            "⏰ Primeira cobrança acontecerá em " +
+            primeiraCobranca +
+            " segundos."
+        );
+
+        Debug.Log(
+            "💰 Dívida total: R$" +
+            (parcela1 + parcela2 + parcela3)
+        );
     }
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     void Update()
     {
         if (player == null ||
             playerMoney == null ||
             dividaQuitada)
+        {
             return;
+        }
 
-        // =========================
-        // ESPERANDO 1 MINUTO
-        // =========================
+        // =================================================
+        // ESPERANDO PRÓXIMA COBRANÇA
+        // =================================================
 
         if (esperando)
         {
             tempoEspera -= Time.deltaTime;
 
-            if (tempoEspera <= 0)
+            if (tempoEspera <= 0f)
             {
                 esperando = false;
                 indoAtePlayer = true;
 
-                gameObject.SetActive(true);
+                AtualizarAnimacao(true);
 
                 Debug.Log(
-                    "💰 O cobrador está voltando!"
+                    "💰 COBRADOR ESTÁ VINDO!"
                 );
             }
 
             return;
         }
 
-        // =========================
+        // =================================================
         // INDO ATÉ O PLAYER
-        // =========================
+        // =================================================
 
         if (indoAtePlayer)
         {
@@ -145,18 +229,26 @@ public class NPCDivida : MonoBehaviour
                 indoAtePlayer = false;
                 cobrando = true;
 
+                AtualizarAnimacao(false);
+
+                OlharParaPlayer();
+
                 Debug.Log(
-                    "💰 O cobrador chegou!"
+                    "💰 COBRADOR CHEGOU NO PLAYER!"
                 );
             }
+
+            return;
         }
 
-        // =========================
+        // =================================================
         // COBRANDO
-        // =========================
+        // =================================================
 
         if (cobrando)
         {
+            AtualizarAnimacao(false);
+
             OlharParaPlayer();
 
             if (Keyboard.current != null &&
@@ -168,22 +260,41 @@ public class NPCDivida : MonoBehaviour
     }
 
     // =====================================================
-    // MOVIMENTO
+    // MOVIMENTO ATÉ O PLAYER
     // =====================================================
 
     void IrAtePlayer()
     {
+        if (player == null)
+            return;
+
         Vector3 direcao =
             player.position - transform.position;
 
-        direcao.y = 0;
+        // Ignora altura
+        direcao.y = 0f;
 
-        if (direcao.magnitude > distanciaParar)
+        float distancia =
+            direcao.magnitude;
+
+        // -------------------------------------------------
+        // AINDA PRECISA ANDAR
+        // -------------------------------------------------
+
+        if (distancia > distanciaParar)
         {
-            transform.position +=
+            AtualizarAnimacao(true);
+
+            Vector3 movimento =
                 direcao.normalized *
                 velocidade *
                 Time.deltaTime;
+
+            transform.position += movimento;
+
+            // ---------------------------------------------
+            // OLHAR PARA O PLAYER
+            // ---------------------------------------------
 
             if (direcao != Vector3.zero)
             {
@@ -194,9 +305,13 @@ public class NPCDivida : MonoBehaviour
                     Quaternion.Slerp(
                         transform.rotation,
                         rotacao,
-                        5f * Time.deltaTime
+                        8f * Time.deltaTime
                     );
             }
+        }
+        else
+        {
+            AtualizarAnimacao(false);
         }
     }
 
@@ -206,12 +321,15 @@ public class NPCDivida : MonoBehaviour
 
     void OlharParaPlayer()
     {
+        if (player == null)
+            return;
+
         Vector3 direcao =
             player.position - transform.position;
 
-        direcao.y = 0;
+        direcao.y = 0f;
 
-        if (direcao != Vector3.zero)
+        if (direcao.sqrMagnitude > 0.01f)
         {
             Quaternion rotacao =
                 Quaternion.LookRotation(direcao);
@@ -220,9 +338,24 @@ public class NPCDivida : MonoBehaviour
                 Quaternion.Slerp(
                     transform.rotation,
                     rotacao,
-                    5f * Time.deltaTime
+                    8f * Time.deltaTime
                 );
         }
+    }
+
+    // =====================================================
+    // ANIMAÇÃO
+    // =====================================================
+
+    void AtualizarAnimacao(bool andando)
+    {
+        if (animator == null)
+            return;
+
+        animator.SetBool(
+            "Andando",
+            andando
+        );
     }
 
     // =====================================================
@@ -233,27 +366,39 @@ public class NPCDivida : MonoBehaviour
     {
         int valor = 0;
 
+        // -------------------------------------------------
+        // DEFINIR VALOR
+        // -------------------------------------------------
+
         if (parcelaAtual == 0)
+        {
             valor = parcela1;
-
+        }
         else if (parcelaAtual == 1)
+        {
             valor = parcela2;
-
+        }
         else if (parcelaAtual == 2)
+        {
             valor = parcela3;
+        }
+        else
+        {
+            return;
+        }
 
-        // =========================
+        // -------------------------------------------------
         // VERIFICAR DINHEIRO
-        // =========================
+        // -------------------------------------------------
 
         if (!playerMoney.TemDinheiro(valor))
         {
             Debug.Log(
-                "❌ Você não tem dinheiro suficiente!"
+                "❌ VOCÊ NÃO TEM DINHEIRO!"
             );
 
             Debug.Log(
-                "💬 O cobrador diz: " +
+                "💬 Cobrador: " +
                 "\"Você não tem dinheiro? " +
                 "Tudo bem, volto mais tarde.\""
             );
@@ -266,51 +411,50 @@ public class NPCDivida : MonoBehaviour
             return;
         }
 
-        // =========================
-        // PAGAR
-        // =========================
+        // -------------------------------------------------
+        // REMOVER DINHEIRO
+        // -------------------------------------------------
 
         bool pagamento =
             playerMoney.RemoverDinheiro(valor);
 
         if (!pagamento)
-            return;
-
-        // =========================
-        // SOM DE PAGAMENTO
-        // =========================
-
-        if (audioPagamento != null)
-        {
-            audioPagamento.volume = volumePagamento;
-
-            // PlayOneShot permite tocar o pagamento
-            // sem precisar interromper outro som
-            // que esteja sendo reproduzido pelo AudioSource.
-
-            if (audioPagamento.clip != null)
-            {
-                audioPagamento.PlayOneShot(
-                    audioPagamento.clip,
-                    volumePagamento
-                );
-            }
-            else
-            {
-                Debug.LogWarning(
-                    "⚠️ O Audio Source do pagamento não possui um AudioClip!"
-                );
-            }
-        }
-        else
         {
             Debug.LogWarning(
-                "⚠️ Audio Source do pagamento não foi configurado!"
+                "⚠️ Não foi possível remover o dinheiro."
+            );
+
+            return;
+        }
+
+        // -------------------------------------------------
+        // SOM
+        // -------------------------------------------------
+
+        if (audioPagamento != null &&
+            somPagamento != null)
+        {
+            audioPagamento.PlayOneShot(
+                somPagamento,
+                volumePagamento
             );
         }
 
+        // -------------------------------------------------
+        // DEBUG
+        // -------------------------------------------------
+
         Debug.Log(
-            "💰 Parcela paga: R$" + valor
+            "================================"
+        );
+
+        Debug.Log(
+            "💰 PARCELA PAGA!"
+        );
+
+        Debug.Log(
+            "💵 Valor: R$" +
+            valor
         );
 
         Debug.Log(
@@ -318,17 +462,21 @@ public class NPCDivida : MonoBehaviour
             playerMoney.GetDinheiro()
         );
 
-        // =========================
+        Debug.Log(
+            "================================"
+        );
+
+        // -------------------------------------------------
         // PRÓXIMA PARCELA
-        // =========================
+        // -------------------------------------------------
 
         parcelaAtual++;
 
         cobrando = false;
 
-        // =========================
-        // TERMINOU A DÍVIDA
-        // =========================
+        // -------------------------------------------------
+        // TERMINOU A DÍVIDA?
+        // -------------------------------------------------
 
         if (parcelaAtual >= 3)
         {
@@ -336,16 +484,18 @@ public class NPCDivida : MonoBehaviour
             return;
         }
 
-        // =========================
-        // ESPERAR 1 MINUTO
-        // =========================
+        // -------------------------------------------------
+        // IR EMBORA
+        // -------------------------------------------------
 
         Debug.Log(
             "✅ Parcela paga!"
         );
 
         Debug.Log(
-            "⏰ Próxima cobrança em 1 minuto."
+            "⏰ Próxima cobrança em " +
+            tempoEntreCobrancas +
+            " segundos."
         );
 
         IrEmbora();
@@ -363,20 +513,26 @@ public class NPCDivida : MonoBehaviour
         cobrando = false;
         indoAtePlayer = false;
 
+        AtualizarAnimacao(false);
+
+        if (player == null)
+            return;
+
         Vector3 direcao =
             transform.position -
             player.position;
 
-        direcao.y = 0;
+        direcao.y = 0f;
 
-        if (direcao != Vector3.zero)
+        if (direcao.sqrMagnitude > 0.01f)
         {
+            // Afasta o NPC do player
             transform.position +=
                 direcao.normalized * 8f;
         }
 
         Debug.Log(
-            "🚶 O cobrador foi embora."
+            "🚶 COBRADOR FOI EMBORA."
         );
     }
 
@@ -392,16 +548,23 @@ public class NPCDivida : MonoBehaviour
         esperando = false;
         indoAtePlayer = false;
 
+        AtualizarAnimacao(false);
+
         Debug.Log(
-            "=============================="
+            "================================"
         );
 
         Debug.Log(
-            "🏡 FAZENDA QUITADA!"
+            "🏡 DÍVIDA QUITADA!"
         );
 
         Debug.Log(
-            "💰 Todas as parcelas foram pagas!"
+            "💰 Todas as 3 parcelas foram pagas!"
+        );
+
+        Debug.Log(
+            "💵 Total pago: R$" +
+            (parcela1 + parcela2 + parcela3)
         );
 
         Debug.Log(
@@ -409,61 +572,77 @@ public class NPCDivida : MonoBehaviour
         );
 
         Debug.Log(
-            "=============================="
+            "================================"
         );
 
-        Vector3 direcao =
-            transform.position -
-            player.position;
+        // -------------------------------------------------
+        // AFASTAR DO PLAYER
+        // -------------------------------------------------
 
-        direcao.y = 0;
-
-        if (direcao != Vector3.zero)
+        if (player != null)
         {
-            transform.position +=
-                direcao.normalized * 10f;
+            Vector3 direcao =
+                transform.position -
+                player.position;
+
+            direcao.y = 0f;
+
+            if (direcao.sqrMagnitude > 0.01f)
+            {
+                transform.position +=
+                    direcao.normalized * 10f;
+            }
         }
+
+        // -------------------------------------------------
+        // DESTRUIR NPC
+        // -------------------------------------------------
 
         Destroy(gameObject);
     }
 
     // =====================================================
-    // TEXTO DA COBRANÇA
+    // TEXTO NA TELA
     // =====================================================
 
     void OnGUI()
     {
         if (!cobrando ||
             dividaQuitada)
+        {
             return;
+        }
 
         int valor = 0;
 
         if (parcelaAtual == 0)
+        {
             valor = parcela1;
-
+        }
         else if (parcelaAtual == 1)
+        {
             valor = parcela2;
-
+        }
         else if (parcelaAtual == 2)
+        {
             valor = parcela3;
+        }
 
         GUIStyle estilo =
             new GUIStyle(GUI.skin.box);
 
         estilo.fontSize = 22;
-
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
-        float largura = 500;
-        float altura = 150;
+        float largura = 500f;
+        float altura = 150f;
 
         float x =
-            (Screen.width - largura) / 2;
+            (Screen.width - largura) / 2f;
 
         float y =
-            Screen.height - 220;
+            Screen.height - 220f;
 
         GUI.Box(
             new Rect(
