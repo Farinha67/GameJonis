@@ -3,12 +3,16 @@ using UnityEngine.InputSystem;
 
 public class PlantSpot : MonoBehaviour
 {
-    [Header("Árvore")]
-    public GameObject arvorePrefab;
+    [Header("Área de Plantio")]
+    public PlantArea areaPlantio;
 
     [Header("Configuração")]
-    public float distanciaPlantio = 2f;
+    public float distanciaPlantio = 5f;
+    public float distanciaEntreArvores = 1.5f;
     public float tempoParaCrescer = 10f;
+
+    [Header("Raycast")]
+    public LayerMask camadaDoChao = ~0;
 
     [Header("Som de Plantio")]
     public AudioSource audioSource;
@@ -30,11 +34,11 @@ public class PlantSpot : MonoBehaviour
     private Transform player;
     private GameObject arvoreAtual;
 
-    private bool playerPerto;
     private bool foiRegada;
     private bool crescendo;
 
     private Shop loja;
+    private Camera cam;
 
     void Start()
     {
@@ -45,39 +49,47 @@ public class PlantSpot : MonoBehaviour
         {
             player = playerObject.transform;
         }
-        else
-        {
-            Debug.LogWarning("Player não encontrado!");
-        }
 
-        loja = FindFirstObjectByType<Shop>();
+        loja =
+            FindFirstObjectByType<Shop>();
 
-        if (loja == null)
-        {
-            Debug.LogWarning("Shop não encontrado!");
-        }
+        cam = Camera.main;
     }
 
     void Update()
     {
-        if (player == null)
+        if (player == null || cam == null)
             return;
 
-        float distancia =
-            Vector3.Distance(
-                transform.position,
-                player.position
-            );
+        if (Keyboard.current == null)
+            return;
 
-        playerPerto =
-            distancia <= distanciaPlantio;
+        // =================================================
+        // PLANTAR / REGAR
+        // =================================================
+
+        if (Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            ProcessarInteracao();
+        }
+
+        // =================================================
+        // SOM DE CRESCIMENTO
+        // =================================================
 
         if (crescimentoAudioSource != null &&
             crescimentoAudioSource.isPlaying)
         {
+            float distancia =
+                Vector3.Distance(
+                    transform.position,
+                    player.position
+                );
+
             float porcentagem =
                 Mathf.Clamp01(
-                    distancia / distanciaMaximaSom
+                    distancia /
+                    distanciaMaximaSom
                 );
 
             crescimentoAudioSource.volume =
@@ -87,46 +99,162 @@ public class PlantSpot : MonoBehaviour
                     porcentagem
                 );
         }
+    }
 
-        if (!playerPerto)
-            return;
+    // =====================================================
+    // INTERAÇÃO
+    // =====================================================
 
-        if (Keyboard.current == null)
-            return;
+    void ProcessarInteracao()
+    {
+        Ray ray =
+            cam.ScreenPointToRay(
+                new Vector3(
+                    Screen.width / 2f,
+                    Screen.height / 2f,
+                    0f
+                )
+            );
 
-        if (Keyboard.current.eKey.wasPressedThisFrame)
+        RaycastHit hit;
+
+        if (!Physics.Raycast(
+                ray,
+                out hit,
+                distanciaPlantio,
+                camadaDoChao))
         {
-            if (arvoreAtual == null)
-            {
-                Plantar();
-            }
-            else if (!foiRegada)
+            return;
+        }
+
+        // =================================================
+        // JÁ EXISTE ÁRVORE
+        // =================================================
+
+        if (arvoreAtual != null)
+        {
+            if (!foiRegada)
             {
                 TentarRegar();
             }
+
+            return;
         }
-    }
 
-    // =========================
-    // PLANTAR
-    // =========================
+        // =================================================
+        // ÁREA
+        // =================================================
 
-    void Plantar()
-    {
-        if (arvorePrefab == null)
+        if (areaPlantio == null)
         {
             Debug.LogWarning(
-                "Coloque o Prefab da árvore no PlantSpot!"
+                "⚠️ Área de Plantio não configurada!"
             );
 
             return;
         }
 
-        arvoreAtual = Instantiate(
-            arvorePrefab,
-            transform.position,
-            Quaternion.identity
-        );
+        if (!areaPlantio.PodePlantar(hit.point))
+        {
+            Debug.Log(
+                "❌ Você está fora da área de plantio!"
+            );
+
+            return;
+        }
+
+        // =================================================
+        // VERIFICAR SEMENTE
+        // =================================================
+
+        if (loja == null)
+        {
+            loja =
+                FindFirstObjectByType<Shop>();
+        }
+
+        if (loja == null)
+        {
+            Debug.LogError(
+                "❌ Shop não encontrado!"
+            );
+
+            return;
+        }
+
+        if (!loja.TemSementeSelecionada())
+        {
+            Debug.Log(
+                "🌱 Você não possui uma semente selecionada!"
+            );
+
+            return;
+        }
+
+        Plantar(hit.point);
+    }
+
+    // =====================================================
+    // PLANTAR
+    // =====================================================
+
+    void Plantar(Vector3 ponto)
+    {
+        GameObject prefab =
+            loja.GetPrefabSementeSelecionada();
+
+        if (prefab == null)
+        {
+            Debug.LogError(
+                "❌ Prefab da árvore não encontrado!"
+            );
+
+            return;
+        }
+
+        // =================================================
+        // DISTÂNCIA ENTRE ÁRVORES
+        // =================================================
+
+        PlantSpot[] spots =
+            FindObjectsByType<PlantSpot>(
+                FindObjectsSortMode.None
+            );
+
+        foreach (PlantSpot spot in spots)
+        {
+            if (spot == null || spot == this)
+                continue;
+
+            if (!spot.TemArvore())
+                continue;
+
+            float distancia =
+                Vector3.Distance(
+                    ponto,
+                    spot.GetPosicaoArvore()
+                );
+
+            if (distancia < distanciaEntreArvores)
+            {
+                Debug.Log(
+                    "🌳 Já existe uma árvore muito próxima!"
+                );
+
+                return;
+            }
+        }
+
+        // =================================================
+        // CRIAR ÁRVORE
+        // =================================================
+
+        arvoreAtual =
+            Instantiate(
+                prefab,
+                ponto,
+                Quaternion.identity
+            );
 
         arvoreAtual.transform.localScale =
             Vector3.one * 0.3f;
@@ -134,25 +262,39 @@ public class PlantSpot : MonoBehaviour
         foiRegada = false;
         crescendo = false;
 
+        // =================================================
+        // CONSUMIR SEMENTE
+        // =================================================
+
+        loja.ConsumirSemente();
+
+        // =================================================
+        // SOM
+        // =================================================
+
         if (audioSource != null &&
             somPlantio != null)
         {
-            audioSource.PlayOneShot(somPlantio);
+            audioSource.PlayOneShot(
+                somPlantio
+            );
         }
 
-        Debug.Log("🌱 Semente plantada!");
+        Debug.Log(
+            "🌱 " +
+            loja.GetNomeSementeSelecionada() +
+            " plantada!"
+        );
     }
 
-    // =========================
+    // =====================================================
     // REGAR
-    // =========================
+    // =====================================================
 
     void TentarRegar()
     {
         if (loja == null)
-        {
             loja = FindFirstObjectByType<Shop>();
-        }
 
         if (loja == null)
             return;
@@ -179,22 +321,28 @@ public class PlantSpot : MonoBehaviour
         if (regarAudioSource != null &&
             somRegar != null)
         {
-            regarAudioSource.PlayOneShot(somRegar);
+            regarAudioSource.PlayOneShot(
+                somRegar
+            );
         }
-
-        Debug.Log("💧 Planta regada!");
 
         loja.UsarRegador();
 
+        Debug.Log(
+            "💧 Planta regada!"
+        );
+
         if (!crescendo)
         {
-            StartCoroutine(CrescerArvore());
+            StartCoroutine(
+                CrescerArvore()
+            );
         }
     }
 
-    // =========================
+    // =====================================================
     // CRESCER
-    // =========================
+    // =====================================================
 
     System.Collections.IEnumerator CrescerArvore()
     {
@@ -214,7 +362,9 @@ public class PlantSpot : MonoBehaviour
             crescimentoAudioSource.clip =
                 somCrescimento;
 
-            crescimentoAudioSource.loop = true;
+            crescimentoAudioSource.loop =
+                true;
+
             crescimentoAudioSource.volume =
                 volumeMaximo;
 
@@ -226,14 +376,19 @@ public class PlantSpot : MonoBehaviour
             if (arvoreAtual == null)
             {
                 PararSomCrescimento();
+
                 crescendo = false;
+
                 yield break;
             }
 
             tempo += Time.deltaTime;
 
             float porcentagem =
-                tempo / tempoParaCrescer;
+                Mathf.Clamp01(
+                    tempo /
+                    tempoParaCrescer
+                );
 
             arvoreAtual.transform.localScale =
                 Vector3.Lerp(
@@ -255,12 +410,14 @@ public class PlantSpot : MonoBehaviour
 
         crescendo = false;
 
-        Debug.Log("🌳 Árvore cresceu!");
+        Debug.Log(
+            "🌳 Árvore cresceu!"
+        );
     }
 
-    // =========================
-    // PARAR SOM
-    // =========================
+    // =====================================================
+    // SOM
+    // =====================================================
 
     void PararSomCrescimento()
     {
@@ -270,9 +427,28 @@ public class PlantSpot : MonoBehaviour
         }
     }
 
-    // =========================
-    // COLHER
-    // =========================
+    // =====================================================
+    // COLHEITA
+    // =====================================================
+
+    public bool PodeColher()
+    {
+        return arvoreAtual != null &&
+               !crescendo;
+    }
+
+    public bool TemArvore()
+    {
+        return arvoreAtual != null;
+    }
+
+    public Vector3 GetPosicaoArvore()
+    {
+        if (arvoreAtual == null)
+            return transform.position;
+
+        return arvoreAtual.transform.position;
+    }
 
     public bool ColherArvore()
     {
@@ -280,13 +456,7 @@ public class PlantSpot : MonoBehaviour
             return false;
 
         if (crescendo)
-        {
-            Debug.Log(
-                "🌱 Essa árvore ainda está crescendo!"
-            );
-
             return false;
-        }
 
         PararSomCrescimento();
 
@@ -296,64 +466,112 @@ public class PlantSpot : MonoBehaviour
         foiRegada = false;
         crescendo = false;
 
-        Debug.Log("🚜 Árvore colhida!");
+        Debug.Log(
+            "🚜 Árvore colhida!"
+        );
 
         return true;
     }
 
-    // =========================
-    // TEXTO
-    // =========================
+    // =====================================================
+    // UI DO PLANTIO
+    // =====================================================
 
     void OnGUI()
     {
-        if (!playerPerto)
+        if (player == null)
+            return;
+
+        string texto = "";
+
+        if (arvoreAtual != null)
+        {
+            if (!foiRegada)
+            {
+                texto =
+                    "💧 PRESSIONE E PARA REGAR";
+            }
+            else if (crescendo)
+            {
+                texto =
+                    "🌱 A ÁRVORE ESTÁ CRESCENDO...";
+            }
+            else
+            {
+                texto =
+                    "🌳 ÁRVORE PRONTA PARA COLHER";
+            }
+        }
+        else
+        {
+            Ray ray =
+                cam.ScreenPointToRay(
+                    new Vector3(
+                        Screen.width / 2f,
+                        Screen.height / 2f,
+                        0f
+                    )
+                );
+
+            RaycastHit hit;
+
+            if (Physics.Raycast(
+                    ray,
+                    out hit,
+                    distanciaPlantio,
+                    camadaDoChao))
+            {
+                if (areaPlantio != null &&
+                    areaPlantio.PodePlantar(
+                        hit.point))
+                {
+                    if (loja != null &&
+                        loja.TemSementeSelecionada())
+                    {
+                        texto =
+                            "🌱 PRESSIONE E PARA PLANTAR\n" +
+                            loja.GetNomeSementeSelecionada();
+                    }
+                    else
+                    {
+                        texto =
+                            "🌱 COMPRE UMA SEMENTE NA LOJA";
+                    }
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(texto))
             return;
 
         GUIStyle estilo =
             new GUIStyle(GUI.skin.box);
 
-        estilo.fontSize = 20;
+        estilo.fontSize = 18;
+        estilo.fontStyle =
+            FontStyle.Bold;
+
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
+        float largura = 380f;
+        float altura = 65f;
+
         float x =
-            Screen.width / 2 - 180;
+            (Screen.width - largura) / 2f;
 
         float y =
-            Screen.height - 150;
+            Screen.height - 120f;
 
-        if (arvoreAtual == null)
-        {
-            GUI.Box(
-                new Rect(x, y, 360, 60),
-                "🌱 PRESSIONE E PARA PLANTAR",
-                estilo
-            );
-        }
-        else if (!foiRegada)
-        {
-            GUI.Box(
-                new Rect(x, y, 360, 60),
-                "💧 PRESSIONE E PARA REGAR",
-                estilo
-            );
-        }
-        else if (crescendo)
-        {
-            GUI.Box(
-                new Rect(x, y, 360, 60),
-                "🌱 A ÁRVORE ESTÁ CRESCENDO...",
-                estilo
-            );
-        }
-        else
-        {
-            GUI.Box(
-                new Rect(x, y, 360, 60),
-                "🌳 ÁRVORE PRONTA PARA COLHER!",
-                estilo
-            );
-        }
+        GUI.Box(
+            new Rect(
+                x,
+                y,
+                largura,
+                altura
+            ),
+            texto,
+            estilo
+        );
     }
 }

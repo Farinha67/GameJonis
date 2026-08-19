@@ -3,16 +3,48 @@ using UnityEngine.InputSystem;
 
 public class Shop : MonoBehaviour
 {
-    [Header("Preços")]
-    public int precoSemente = 10;
-    public int precoRegador = 15;
+    // =====================================================
+    // TIPO DE SEMENTE
+    // =====================================================
+
+    [System.Serializable]
+    public class TipoSemente
+    {
+        public string nome;
+        public int preco;
+        public GameObject prefabArvore;
+    }
+
+    // =====================================================
+    // SEMENTES
+    // =====================================================
+
+    [Header("Sementes")]
+    public TipoSemente arvoreNivel1;
+    public TipoSemente arvoreNivel2;
+    public TipoSemente arvoreNivel3;
+    public TipoSemente pinheiro;
+    public TipoSemente macieira;
+
+    // =====================================================
+    // REGADOR
+    // =====================================================
 
     [Header("Regador")]
+    public int precoRegador = 15;
     public GameObject regadorPrefab;
     public Transform holdingPoint;
 
+    // =====================================================
+    // CONFIGURAÇÃO
+    // =====================================================
+
     [Header("Configuração")]
     public float distanciaLoja = 3f;
+
+    // =====================================================
+    // SONS
+    // =====================================================
 
     [Header("Sons da Loja")]
     public AudioSource audioSource;
@@ -23,12 +55,47 @@ public class Shop : MonoBehaviour
     public AudioSource audioSourceSemDinheiro;
     public AudioClip somSemDinheiro;
 
+    // =====================================================
+    // PLAYER
+    // =====================================================
+
     private Transform player;
     private PlayerMoney playerMoney;
 
-    private bool playerPerto = false;
+    private bool playerPerto;
+
+    // =====================================================
+    // REGADOR
+    // =====================================================
 
     private GameObject regadorNaMao;
+
+    // =====================================================
+    // INVENTÁRIO DE SEMENTES
+    // =====================================================
+
+    private int quantidadeArvoreNivel1;
+    private int quantidadeArvoreNivel2;
+    private int quantidadeArvoreNivel3;
+    private int quantidadePinheiro;
+    private int quantidadeMacieira;
+
+    // =====================================================
+    // SEMENTE SELECIONADA
+    // =====================================================
+
+    private int sementeSelecionada = 0;
+
+    // 0 = nenhuma
+    // 1 = árvore nível 1
+    // 2 = árvore nível 2
+    // 3 = árvore nível 3
+    // 4 = pinheiro
+    // 5 = macieira
+
+    // =====================================================
+    // START
+    // =====================================================
 
     void Start()
     {
@@ -57,9 +124,17 @@ public class Shop : MonoBehaviour
         }
     }
 
+    // =====================================================
+    // UPDATE
+    // =====================================================
+
     void Update()
     {
-        if (player == null || playerMoney == null)
+        if (player == null ||
+            playerMoney == null)
+            return;
+
+        if (Keyboard.current == null)
             return;
 
         float distancia =
@@ -71,31 +146,99 @@ public class Shop : MonoBehaviour
         playerPerto =
             distancia <= distanciaLoja;
 
-        if (Keyboard.current == null)
-            return;
-
-        // =========================
-        // COMPRAS
-        // =========================
+        // =================================================
+        // COMPRAR NA LOJA
+        // =================================================
 
         if (playerPerto)
         {
-            // E = Semente
-            if (Keyboard.current.eKey.wasPressedThisFrame)
+            // 1 = comprar árvore nível 1
+            if (Keyboard.current.digit1Key.wasPressedThisFrame)
             {
-                ComprarSemente();
+                ComprarSemente(
+                    arvoreNivel1,
+                    1
+                );
             }
 
-            // Q = Regador
+            // 2 = comprar árvore nível 2
+            if (Keyboard.current.digit2Key.wasPressedThisFrame)
+            {
+                ComprarSemente(
+                    arvoreNivel2,
+                    2
+                );
+            }
+
+            // 3 = comprar árvore nível 3
+            if (Keyboard.current.digit3Key.wasPressedThisFrame)
+            {
+                ComprarSemente(
+                    arvoreNivel3,
+                    3
+                );
+            }
+
+            // 4 = comprar pinheiro
+            if (Keyboard.current.digit4Key.wasPressedThisFrame)
+            {
+                ComprarSemente(
+                    pinheiro,
+                    4
+                );
+            }
+
+            // 5 = comprar macieira
+            if (Keyboard.current.digit5Key.wasPressedThisFrame)
+            {
+                ComprarSemente(
+                    macieira,
+                    5
+                );
+            }
+
+            // Q = regador
             if (Keyboard.current.qKey.wasPressedThisFrame)
             {
                 ComprarRegador();
             }
         }
 
-        // =========================
+        // =================================================
+        // SELECIONAR SEMENTE FORA DA LOJA
+        // =================================================
+
+        if (!playerPerto)
+        {
+            if (Keyboard.current.digit1Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(1);
+            }
+
+            if (Keyboard.current.digit2Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(2);
+            }
+
+            if (Keyboard.current.digit3Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(3);
+            }
+
+            if (Keyboard.current.digit4Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(4);
+            }
+
+            if (Keyboard.current.digit5Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(5);
+            }
+        }
+
+        // =================================================
         // SOLTAR REGADOR
-        // =========================
+        // =================================================
 
         if (!playerPerto &&
             regadorNaMao != null &&
@@ -109,53 +252,294 @@ public class Shop : MonoBehaviour
     // COMPRAR SEMENTE
     // =====================================================
 
-    void ComprarSemente()
+    void ComprarSemente(
+        TipoSemente semente,
+        int numero
+    )
     {
-        // Tenta tirar o dinheiro
-        if (playerMoney.RemoverDinheiro(precoSemente))
+        if (semente == null)
+            return;
+
+        if (semente.prefabArvore == null)
         {
-            // =========================
-            // SOM DE COMPRA
-            // =========================
-
-            if (audioSource != null &&
-                somCompraSemente != null)
-            {
-                audioSource.PlayOneShot(
-                    somCompraSemente
-                );
-            }
-
-            Debug.Log(
-                "🌱 Semente comprada!"
+            Debug.LogError(
+                "❌ O prefab da semente '" +
+                semente.nome +
+                "' não foi configurado!"
             );
 
-            Debug.Log(
-                "💰 Saldo: R$" +
-                playerMoney.GetDinheiro()
-            );
+            return;
         }
-        else
-        {
-            // =========================
-            // SEM DINHEIRO
-            // =========================
 
+        if (!playerMoney.RemoverDinheiro(
+                semente.preco))
+        {
             TocarSomSemDinheiro();
 
             Debug.Log(
-                "❌ Você não tem dinheiro suficiente para comprar a semente!"
+                "❌ Dinheiro insuficiente para comprar " +
+                semente.nome
             );
 
             Debug.Log(
                 "💰 Você tem: R$" +
                 playerMoney.GetDinheiro()
             );
+
+            return;
+        }
+
+        // =================================================
+        // ADICIONAR AO INVENTÁRIO
+        // =================================================
+
+        AdicionarSemente(numero);
+
+        // =================================================
+        // SOM
+        // =================================================
+
+        if (audioSource != null &&
+            somCompraSemente != null)
+        {
+            audioSource.PlayOneShot(
+                somCompraSemente
+            );
+        }
+
+        Debug.Log(
+            "🌱 Comprou: " +
+            semente.nome
+        );
+
+        Debug.Log(
+            "📦 Quantidade: " +
+            GetQuantidadeSemente(numero)
+        );
+
+        Debug.Log(
+            "💰 Saldo: R$" +
+            playerMoney.GetDinheiro()
+        );
+    }
+
+    // =====================================================
+    // ADICIONAR SEMENTE
+    // =====================================================
+
+    void AdicionarSemente(int numero)
+    {
+        switch (numero)
+        {
+            case 1:
+                quantidadeArvoreNivel1++;
+                break;
+
+            case 2:
+                quantidadeArvoreNivel2++;
+                break;
+
+            case 3:
+                quantidadeArvoreNivel3++;
+                break;
+
+            case 4:
+                quantidadePinheiro++;
+                break;
+
+            case 5:
+                quantidadeMacieira++;
+                break;
         }
     }
 
     // =====================================================
-    // COMPRAR REGADOR
+    // SELECIONAR SEMENTE
+    // =====================================================
+
+    void SelecionarSemente(int numero)
+    {
+        int quantidade =
+            GetQuantidadeSemente(numero);
+
+        if (quantidade <= 0)
+        {
+            Debug.Log(
+                "❌ Você não possui essa semente."
+            );
+
+            return;
+        }
+
+        sementeSelecionada =
+            numero;
+
+        Debug.Log(
+            "🌱 Semente selecionada: " +
+            GetNomeSemente(numero)
+        );
+
+        Debug.Log(
+            "📦 Quantidade: " +
+            quantidade
+        );
+    }
+
+    // =====================================================
+    // PEGAR PREFAB DA SEMENTE SELECIONADA
+    // =====================================================
+
+    public GameObject GetPrefabSementeSelecionada()
+    {
+        switch (sementeSelecionada)
+        {
+            case 1:
+                return arvoreNivel1.prefabArvore;
+
+            case 2:
+                return arvoreNivel2.prefabArvore;
+
+            case 3:
+                return arvoreNivel3.prefabArvore;
+
+            case 4:
+                return pinheiro.prefabArvore;
+
+            case 5:
+                return macieira.prefabArvore;
+        }
+
+        return null;
+    }
+
+    // =====================================================
+    // SEMENTE SELECIONADA
+    // =====================================================
+
+    public int GetSementeSelecionada()
+    {
+        return sementeSelecionada;
+    }
+
+    // =====================================================
+    // NOME DA SEMENTE
+    // =====================================================
+
+    public string GetNomeSementeSelecionada()
+    {
+        if (sementeSelecionada == 0)
+            return "Nenhuma";
+
+        return GetNomeSemente(
+            sementeSelecionada
+        );
+    }
+
+    string GetNomeSemente(int numero)
+    {
+        switch (numero)
+        {
+            case 1:
+                return arvoreNivel1.nome;
+
+            case 2:
+                return arvoreNivel2.nome;
+
+            case 3:
+                return arvoreNivel3.nome;
+
+            case 4:
+                return pinheiro.nome;
+
+            case 5:
+                return macieira.nome;
+        }
+
+        return "Nenhuma";
+    }
+
+    // =====================================================
+    // QUANTIDADE
+    // =====================================================
+
+    public int GetQuantidadeSemente(int numero)
+    {
+        switch (numero)
+        {
+            case 1:
+                return quantidadeArvoreNivel1;
+
+            case 2:
+                return quantidadeArvoreNivel2;
+
+            case 3:
+                return quantidadeArvoreNivel3;
+
+            case 4:
+                return quantidadePinheiro;
+
+            case 5:
+                return quantidadeMacieira;
+        }
+
+        return 0;
+    }
+
+    // =====================================================
+    // TEM SEMENTE SELECIONADA
+    // =====================================================
+
+    public bool TemSementeSelecionada()
+    {
+        if (sementeSelecionada == 0)
+            return false;
+
+        return GetQuantidadeSemente(
+            sementeSelecionada
+        ) > 0;
+    }
+
+    // =====================================================
+    // CONSUMIR SEMENTE
+    // =====================================================
+
+    public void ConsumirSemente()
+    {
+        if (sementeSelecionada == 0)
+            return;
+
+        switch (sementeSelecionada)
+        {
+            case 1:
+                quantidadeArvoreNivel1--;
+                break;
+
+            case 2:
+                quantidadeArvoreNivel2--;
+                break;
+
+            case 3:
+                quantidadeArvoreNivel3--;
+                break;
+
+            case 4:
+                quantidadePinheiro--;
+                break;
+
+            case 5:
+                quantidadeMacieira--;
+                break;
+        }
+
+        if (GetQuantidadeSemente(
+                sementeSelecionada) <= 0)
+        {
+            sementeSelecionada = 0;
+        }
+    }
+
+    // =====================================================
+    // REGADOR
     // =====================================================
 
     void ComprarRegador()
@@ -187,43 +571,24 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        // =========================
-        // TENTA TIRAR O DINHEIRO
-        // =========================
-
-        if (!playerMoney.RemoverDinheiro(precoRegador))
+        if (!playerMoney.RemoverDinheiro(
+                precoRegador))
         {
-            // =========================
-            // SEM DINHEIRO
-            // =========================
-
             TocarSomSemDinheiro();
 
             Debug.Log(
                 "❌ Você não tem dinheiro suficiente para comprar o regador!"
             );
 
-            Debug.Log(
-                "💰 Você tem: R$" +
-                playerMoney.GetDinheiro()
-            );
-
             return;
         }
 
-        // =========================
-        // CRIAR REGADOR
-        // =========================
-
-        regadorNaMao = Instantiate(
-            regadorPrefab,
-            holdingPoint.position,
-            holdingPoint.rotation
-        );
-
-        // =========================
-        // COLOCAR NA MÃO
-        // =========================
+        regadorNaMao =
+            Instantiate(
+                regadorPrefab,
+                holdingPoint.position,
+                holdingPoint.rotation
+            );
 
         regadorNaMao.transform.SetParent(
             holdingPoint
@@ -235,10 +600,6 @@ public class Shop : MonoBehaviour
         regadorNaMao.transform.localRotation =
             Quaternion.identity;
 
-        // =========================
-        // DESLIGAR FÍSICA
-        // =========================
-
         Rigidbody rb =
             regadorNaMao.GetComponent<Rigidbody>();
 
@@ -248,10 +609,6 @@ public class Shop : MonoBehaviour
             rb.useGravity = false;
         }
 
-        // =========================
-        // DESLIGAR COLISÃO
-        // =========================
-
         Collider col =
             regadorNaMao.GetComponent<Collider>();
 
@@ -259,10 +616,6 @@ public class Shop : MonoBehaviour
         {
             col.enabled = false;
         }
-
-        // =========================
-        // SOM DE COMPRA DO REGADOR
-        // =========================
 
         if (audioSource != null &&
             somCompraRegador != null)
@@ -275,15 +628,10 @@ public class Shop : MonoBehaviour
         Debug.Log(
             "💧 Regador comprado!"
         );
-
-        Debug.Log(
-            "💰 Saldo: R$" +
-            playerMoney.GetDinheiro()
-        );
     }
 
     // =====================================================
-    // SOM DE QUANDO NÃO TEM DINHEIRO
+    // SOM SEM DINHEIRO
     // =====================================================
 
     void TocarSomSemDinheiro()
@@ -293,12 +641,6 @@ public class Shop : MonoBehaviour
         {
             audioSourceSemDinheiro.PlayOneShot(
                 somSemDinheiro
-            );
-        }
-        else
-        {
-            Debug.LogWarning(
-                "⚠️ Audio Source ou Audio Clip de 'Sem Dinheiro' não foi configurado!"
             );
         }
     }
@@ -336,24 +678,16 @@ public class Shop : MonoBehaviour
         }
 
         regadorNaMao = null;
-
-        Debug.Log(
-            "💧 Regador solto!"
-        );
     }
 
     // =====================================================
-    // VERIFICAR REGADOR
+    // REGADOR
     // =====================================================
 
     public bool EstaSegurandoRegador()
     {
         return regadorNaMao != null;
     }
-
-    // =====================================================
-    // USAR REGADOR
-    // =====================================================
 
     public void UsarRegador()
     {
@@ -363,37 +697,92 @@ public class Shop : MonoBehaviour
         Destroy(regadorNaMao);
 
         regadorNaMao = null;
-
-        Debug.Log(
-            "💧 Regador usado e consumido!"
-        );
     }
 
     // =====================================================
-    // TEXTO DA LOJA
+    // UI DA LOJA
     // =====================================================
 
     void OnGUI()
     {
-        if (!playerPerto || playerMoney == null)
+        if (!playerPerto ||
+            playerMoney == null)
             return;
 
         GUIStyle estilo =
             new GUIStyle(GUI.skin.box);
 
-        estilo.fontSize = 20;
-
+        estilo.fontSize = 18;
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
-        float largura = 450;
-        float altura = 150;
+        float largura = 550;
+        float altura = 330;
 
         float x =
             (Screen.width - largura) / 2;
 
         float y =
-            Screen.height - 220;
+            Screen.height - 400;
+
+        string selecionada =
+            sementeSelecionada == 0
+                ? "Nenhuma"
+                : GetNomeSemente(
+                    sementeSelecionada
+                );
+
+        string texto =
+            "🛒 LOJA\n\n" +
+
+            "1 - " +
+            arvoreNivel1.nome +
+            " - R$" +
+            arvoreNivel1.preco +
+            "  [Qtd: " +
+            quantidadeArvoreNivel1 +
+            "]\n" +
+
+            "2 - " +
+            arvoreNivel2.nome +
+            " - R$" +
+            arvoreNivel2.preco +
+            "  [Qtd: " +
+            quantidadeArvoreNivel2 +
+            "]\n" +
+
+            "3 - " +
+            arvoreNivel3.nome +
+            " - R$" +
+            arvoreNivel3.preco +
+            "  [Qtd: " +
+            quantidadeArvoreNivel3 +
+            "]\n" +
+
+            "4 - " +
+            pinheiro.nome +
+            " - R$" +
+            pinheiro.preco +
+            "  [Qtd: " +
+            quantidadePinheiro +
+            "]\n" +
+
+            "5 - " +
+            macieira.nome +
+            " - R$" +
+            macieira.preco +
+            "  [Qtd: " +
+            quantidadeMacieira +
+            "]\n\n" +
+
+            "Q - Regador - R$" +
+            precoRegador +
+
+            "\n\n🌱 Selecionada: " +
+            selecionada +
+
+            "\n💰 Dinheiro: R$" +
+            playerMoney.GetDinheiro();
 
         GUI.Box(
             new Rect(
@@ -402,18 +791,7 @@ public class Shop : MonoBehaviour
                 largura,
                 altura
             ),
-
-            "🛒 LOJA\n\n" +
-
-            "E - Comprar Semente - R$" +
-            precoSemente +
-
-            "\nQ - Comprar Regador - R$" +
-            precoRegador +
-
-            "\n\nDinheiro: R$" +
-            playerMoney.GetDinheiro(),
-
+            texto,
             estilo
         );
     }
