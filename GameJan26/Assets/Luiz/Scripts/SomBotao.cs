@@ -1,28 +1,26 @@
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.Collections;
+﻿using UnityEngine;
 
-public class SomBotao : MonoBehaviour
+public class SomCliqueBotao : MonoBehaviour
 {
     public AudioSource audioSource;
-    public AudioClip somBotao;
-
-    public string nomeDaCena;
+    public AudioClip somClique;
 
     public void Clicar()
     {
-        StartCoroutine(TocarESeguir());
-    }
+        if (audioSource == null)
+        {
+            Debug.LogError("❌ AudioSource não configurado!");
+            return;
+        }
 
-    IEnumerator TocarESeguir()
-    {
-        
-        audioSource.PlayOneShot(somBotao);
+        if (somClique == null)
+        {
+            Debug.LogError("❌ Som de clique não configurado!");
+            return;
+        }
 
-        
-        yield return new WaitForSeconds(somBotao.length);
+        audioSource.PlayOneShot(somClique);
 
-        
-        SceneManager.LoadScene(nomeDaCena);
+        Debug.Log("🔊 Som do botão tocado!");
     }
 }
