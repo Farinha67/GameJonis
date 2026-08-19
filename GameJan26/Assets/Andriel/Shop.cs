@@ -11,15 +11,20 @@ public class Shop : MonoBehaviour
     public class TipoSemente
     {
         public string nome;
-        public int preco;
+        public int preco = 10;
+
+        [Header("Prefab da árvore")]
         public GameObject prefabArvore;
+
+        [Header("Valor da árvore")]
+        public int valorBase = 50;
     }
 
     // =====================================================
     // SEMENTES
     // =====================================================
 
-    [Header("🌱 Sementes")]
+    [Header("Sementes")]
     public TipoSemente arvoreNivel1;
     public TipoSemente arvoreNivel2;
     public TipoSemente arvoreNivel3;
@@ -30,62 +35,40 @@ public class Shop : MonoBehaviour
     // REGADOR
     // =====================================================
 
-    [Header("💧 Regador")]
+    [Header("Regador")]
     public int precoRegador = 15;
     public GameObject regadorPrefab;
+
+    [Tooltip("Ponto onde a árvore aparece na mão.")]
     public Transform holdingPoint;
 
-    [Header("Tecla do Regador")]
-    public Key teclaRegador = Key.R;
+    [Tooltip("Ponto onde o regador aparece na mão.")]
+    public Transform regadorHoldingPoint;
 
     // =====================================================
-    // AJUSTE DA ÁRVORE NA MÃO
+    // ESCALA DA ÁRVORE NA MÃO
     // =====================================================
 
-    [Header("🌳 Ajuste da Árvore na Mão")]
-
-    [Tooltip("Posição da árvore em relação ao Holding Point.")]
-    public Vector3 posicaoArvoreNaMao = Vector3.zero;
-
-    [Tooltip("Rotação da árvore em relação ao Holding Point.")]
-    public Vector3 rotacaoArvoreNaMao = Vector3.zero;
-
-    [Tooltip("Tamanho da árvore na mão.")]
-    public Vector3 escalaArvoreNaMao =
-        new Vector3(0.15f, 0.15f, 0.15f);
-
-    // =====================================================
-    // AJUSTE DO REGADOR NA MÃO
-    // =====================================================
-
-    [Header("💧 Ajuste do Regador na Mão")]
-
-    [Tooltip("Posição do regador em relação ao Holding Point.")]
-    public Vector3 posicaoRegadorNaMao = Vector3.zero;
-
-    [Tooltip("Rotação do regador em relação ao Holding Point.")]
-    public Vector3 rotacaoRegadorNaMao = Vector3.zero;
-
-    [Tooltip("Tamanho do regador na mão.")]
-    public Vector3 escalaRegadorNaMao = Vector3.one;
+    [Header("Árvore na mão")]
+    public float escalaArvoreNaMao = 0.15f;
 
     // =====================================================
     // CONFIGURAÇÃO
     // =====================================================
 
-    [Header("⚙️ Configuração")]
+    [Header("Configuração")]
     public float distanciaLoja = 3f;
 
     // =====================================================
     // SONS
     // =====================================================
 
-    [Header("🔊 Sons da Loja")]
+    [Header("Sons da Loja")]
     public AudioSource audioSource;
     public AudioClip somCompraSemente;
     public AudioClip somCompraRegador;
 
-    [Header("🔊 Som - Sem Dinheiro")]
+    [Header("Som - Sem Dinheiro")]
     public AudioSource audioSourceSemDinheiro;
     public AudioClip somSemDinheiro;
 
@@ -103,9 +86,6 @@ public class Shop : MonoBehaviour
     // =====================================================
 
     private GameObject regadorNaMao;
-
-    private bool possuiRegador;
-    private bool regadorEquipado;
 
     // =====================================================
     // ÁRVORE NA MÃO
@@ -147,37 +127,32 @@ public class Shop : MonoBehaviour
         GameObject playerObject =
             GameObject.FindGameObjectWithTag("Player");
 
-        if (playerObject == null)
+        if (playerObject != null)
+        {
+            player = playerObject.transform;
+
+            playerMoney =
+                playerObject.GetComponent<PlayerMoney>();
+
+            if (playerMoney == null)
+            {
+                Debug.LogError(
+                    "❌ O Player não possui PlayerMoney!"
+                );
+            }
+        }
+        else
         {
             Debug.LogError(
                 "❌ Player não encontrado! Confira a Tag Player."
             );
-
-            return;
         }
 
-        player =
-            playerObject.transform;
-
-        playerMoney =
-            playerObject.GetComponent<PlayerMoney>();
-
-        if (playerMoney == null)
+        // Se não tiver um ponto específico para o regador,
+        // usa o holdingPoint.
+        if (regadorHoldingPoint == null)
         {
-            Debug.LogError(
-                "❌ Player não possui PlayerMoney!"
-            );
-        }
-
-        // =================================================
-        // HOLDING POINT
-        // =================================================
-
-        if (holdingPoint == null)
-        {
-            Debug.LogError(
-                "❌ HOLDING POINT NÃO FOI CONFIGURADO NO SHOP!"
-            );
+            regadorHoldingPoint = holdingPoint;
         }
     }
 
@@ -204,15 +179,11 @@ public class Shop : MonoBehaviour
             distancia <= distanciaLoja;
 
         // =================================================
-        // DENTRO DA LOJA
+        // COMPRAS
         // =================================================
 
         if (playerPerto)
         {
-            // -------------------------------------------------
-            // COMPRAR ÁRVORE 1
-            // -------------------------------------------------
-
             if (Keyboard.current.digit1Key.wasPressedThisFrame)
             {
                 ComprarSemente(
@@ -220,10 +191,6 @@ public class Shop : MonoBehaviour
                     1
                 );
             }
-
-            // -------------------------------------------------
-            // COMPRAR ÁRVORE 2
-            // -------------------------------------------------
 
             if (Keyboard.current.digit2Key.wasPressedThisFrame)
             {
@@ -233,10 +200,6 @@ public class Shop : MonoBehaviour
                 );
             }
 
-            // -------------------------------------------------
-            // COMPRAR ÁRVORE 3
-            // -------------------------------------------------
-
             if (Keyboard.current.digit3Key.wasPressedThisFrame)
             {
                 ComprarSemente(
@@ -244,10 +207,6 @@ public class Shop : MonoBehaviour
                     3
                 );
             }
-
-            // -------------------------------------------------
-            // COMPRAR PINHEIRO
-            // -------------------------------------------------
 
             if (Keyboard.current.digit4Key.wasPressedThisFrame)
             {
@@ -257,10 +216,6 @@ public class Shop : MonoBehaviour
                 );
             }
 
-            // -------------------------------------------------
-            // COMPRAR MACIEIRA
-            // -------------------------------------------------
-
             if (Keyboard.current.digit5Key.wasPressedThisFrame)
             {
                 ComprarSemente(
@@ -269,74 +224,43 @@ public class Shop : MonoBehaviour
                 );
             }
 
-            // -------------------------------------------------
-            // COMPRAR REGADOR
-            // -------------------------------------------------
-
-            if (Keyboard.current.qKey.wasPressedThisFrame)
+            // R = comprar/pegar regador
+            if (Keyboard.current.rKey.wasPressedThisFrame)
             {
                 ComprarRegador();
             }
-
-            return;
         }
 
         // =================================================
-        // FORA DA LOJA
+        // SELECIONAR SEMENTE
         // =================================================
 
-        // -------------------------------------------------
-        // SELECIONAR ÁRVORE 1
-        // -------------------------------------------------
-
-        if (Keyboard.current.digit1Key.wasPressedThisFrame)
+        if (!playerPerto)
         {
-            SelecionarSemente(1);
-        }
+            if (Keyboard.current.digit1Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(1);
+            }
 
-        // -------------------------------------------------
-        // SELECIONAR ÁRVORE 2
-        // -------------------------------------------------
+            if (Keyboard.current.digit2Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(2);
+            }
 
-        if (Keyboard.current.digit2Key.wasPressedThisFrame)
-        {
-            SelecionarSemente(2);
-        }
+            if (Keyboard.current.digit3Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(3);
+            }
 
-        // -------------------------------------------------
-        // SELECIONAR ÁRVORE 3
-        // -------------------------------------------------
+            if (Keyboard.current.digit4Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(4);
+            }
 
-        if (Keyboard.current.digit3Key.wasPressedThisFrame)
-        {
-            SelecionarSemente(3);
-        }
-
-        // -------------------------------------------------
-        // SELECIONAR PINHEIRO
-        // -------------------------------------------------
-
-        if (Keyboard.current.digit4Key.wasPressedThisFrame)
-        {
-            SelecionarSemente(4);
-        }
-
-        // -------------------------------------------------
-        // SELECIONAR MACIEIRA
-        // -------------------------------------------------
-
-        if (Keyboard.current.digit5Key.wasPressedThisFrame)
-        {
-            SelecionarSemente(5);
-        }
-
-        // =================================================
-        // R = PEGAR / GUARDAR REGADOR
-        // =================================================
-
-        if (Keyboard.current[teclaRegador].wasPressedThisFrame)
-        {
-            AlternarRegador();
+            if (Keyboard.current.digit5Key.wasPressedThisFrame)
+            {
+                SelecionarSemente(5);
+            }
         }
     }
 
@@ -350,30 +274,33 @@ public class Shop : MonoBehaviour
     )
     {
         if (semente == null)
+        {
+            Debug.LogError(
+                "❌ Semente " + numero + " não configurada!"
+            );
+
             return;
+        }
 
         if (semente.prefabArvore == null)
         {
             Debug.LogError(
-                "❌ Prefab da árvore não configurado: " +
-                semente.nome
+                "❌ O prefab da árvore '" +
+                semente.nome +
+                "' não foi configurado!"
             );
 
             return;
         }
 
         if (!playerMoney.RemoverDinheiro(
-                semente.preco))
+            semente.preco))
         {
             TocarSomSemDinheiro();
 
             Debug.Log(
-                "❌ Dinheiro insuficiente!"
-            );
-
-            Debug.Log(
-                "💰 Dinheiro atual: R$" +
-                playerMoney.GetDinheiro()
+                "❌ Dinheiro insuficiente para comprar " +
+                semente.nome
             );
 
             return;
@@ -453,41 +380,18 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        GameObject prefab =
-            GetPrefabSemente(numero);
-
-        if (prefab == null)
-        {
-            Debug.LogError(
-                "❌ O prefab dessa árvore está vazio!"
-            );
-
-            return;
-        }
-
-        // =================================================
-        // SALVAR SELEÇÃO
-        // =================================================
-
         sementeSelecionada =
             numero;
 
-        // =================================================
-        // ESCONDER REGADOR
-        // =================================================
+        // Ao selecionar árvore,
+        // o regador sai da mão.
+        GuardarRegador();
 
-        EsconderRegador();
-
-        // =================================================
-        // CRIAR ÁRVORE
-        // =================================================
-
-        CriarArvoreNaMao(
-            prefab
-        );
+        // Mostra a árvore na mão.
+        CriarArvoreNaMao();
 
         Debug.Log(
-            "🌳 Árvore equipada: " +
+            "🌱 Semente selecionada: " +
             GetNomeSemente(numero)
         );
 
@@ -498,116 +402,52 @@ public class Shop : MonoBehaviour
     }
 
     // =====================================================
-    // PEGAR PREFAB
-    // =====================================================
-
-    private GameObject GetPrefabSemente(
-        int numero
-    )
-    {
-        switch (numero)
-        {
-            case 1:
-                return arvoreNivel1.prefabArvore;
-
-            case 2:
-                return arvoreNivel2.prefabArvore;
-
-            case 3:
-                return arvoreNivel3.prefabArvore;
-
-            case 4:
-                return pinheiro.prefabArvore;
-
-            case 5:
-                return macieira.prefabArvore;
-        }
-
-        return null;
-    }
-
-    // =====================================================
     // CRIAR ÁRVORE NA MÃO
     // =====================================================
 
-    private void CriarArvoreNaMao(
-        GameObject prefab
-    )
+    private void CriarArvoreNaMao()
     {
+        DestruirArvoreNaMao();
+
         if (holdingPoint == null)
         {
             Debug.LogError(
-                "❌ HOLDING POINT ESTÁ VAZIO!"
+                "❌ Holding Point não configurado!"
             );
 
             return;
         }
 
-        // =================================================
-        // DESTRUIR ÁRVORE ANTERIOR
-        // =================================================
+        GameObject prefab =
+            GetPrefabSementeSelecionada();
 
-        if (arvoreNaMao != null)
+        if (prefab == null)
         {
-            Destroy(
-                arvoreNaMao
+            Debug.LogError(
+                "❌ Prefab da árvore selecionada não encontrado!"
             );
 
-            arvoreNaMao = null;
+            return;
         }
-
-        // =================================================
-        // CRIAR ÁRVORE
-        // =================================================
 
         arvoreNaMao =
             Instantiate(
-                prefab
+                prefab,
+                holdingPoint
             );
-
-        arvoreNaMao.name =
-            "ARVORE_NA_MAO";
-
-        // =================================================
-        // COLOCAR NO HOLDING POINT
-        // =================================================
-
-        arvoreNaMao.transform.SetParent(
-            holdingPoint,
-            false
-        );
-
-        // =================================================
-        // POSIÇÃO
-        // =================================================
 
         arvoreNaMao.transform.localPosition =
-            posicaoArvoreNaMao;
-
-        // =================================================
-        // ROTAÇÃO
-        // =================================================
+            Vector3.zero;
 
         arvoreNaMao.transform.localRotation =
-            Quaternion.Euler(
-                rotacaoArvoreNaMao
-            );
-
-        // =================================================
-        // ESCALA
-        // =================================================
+            Quaternion.identity;
 
         arvoreNaMao.transform.localScale =
-            escalaArvoreNaMao;
+            Vector3.one * escalaArvoreNaMao;
 
-        // =================================================
-        // DESATIVAR RIGIDBODY
-        // =================================================
-
+        // Desliga física da árvore na mão.
         Rigidbody[] rigidbodies =
-            arvoreNaMao.GetComponentsInChildren<Rigidbody>(
-                true
-            );
+            arvoreNaMao.GetComponentsInChildren<Rigidbody>();
 
         foreach (Rigidbody rb in rigidbodies)
         {
@@ -615,53 +455,165 @@ public class Shop : MonoBehaviour
             rb.useGravity = false;
         }
 
-        // =================================================
-        // DESATIVAR COLLIDERS
-        // =================================================
-
         Collider[] colliders =
-            arvoreNaMao.GetComponentsInChildren<Collider>(
-                true
-            );
+            arvoreNaMao.GetComponentsInChildren<Collider>();
 
         foreach (Collider col in colliders)
         {
             col.enabled = false;
         }
 
-        // =================================================
-        // DESATIVAR PLANTSPOT
-        // =================================================
-
-        PlantSpot[] spots =
-            arvoreNaMao.GetComponentsInChildren<PlantSpot>(
-                true
-            );
-
-        foreach (PlantSpot spot in spots)
-        {
-            spot.enabled = false;
-        }
-
         Debug.Log(
-            "✅ Árvore criada na mão!"
+            "🌳 Árvore apareceu na mão!"
         );
     }
 
     // =====================================================
-    // ESCONDER ÁRVORE
+    // DESTRUIR ÁRVORE DA MÃO
     // =====================================================
 
-    private void EsconderArvoreNaMao()
+    private void DestruirArvoreNaMao()
     {
-        if (arvoreNaMao == null)
-            return;
+        if (arvoreNaMao != null)
+        {
+            Destroy(arvoreNaMao);
+            arvoreNaMao = null;
+        }
+    }
 
-        Destroy(
-            arvoreNaMao
+    // =====================================================
+    // PEGAR PREFAB
+    // =====================================================
+
+    public GameObject GetPrefabSementeSelecionada()
+    {
+        switch (sementeSelecionada)
+        {
+            case 1:
+                return arvoreNivel1 != null
+                    ? arvoreNivel1.prefabArvore
+                    : null;
+
+            case 2:
+                return arvoreNivel2 != null
+                    ? arvoreNivel2.prefabArvore
+                    : null;
+
+            case 3:
+                return arvoreNivel3 != null
+                    ? arvoreNivel3.prefabArvore
+                    : null;
+
+            case 4:
+                return pinheiro != null
+                    ? pinheiro.prefabArvore
+                    : null;
+
+            case 5:
+                return macieira != null
+                    ? macieira.prefabArvore
+                    : null;
+        }
+
+        return null;
+    }
+
+    // =====================================================
+    // SEMENTE SELECIONADA
+    // =====================================================
+
+    public int GetSementeSelecionada()
+    {
+        return sementeSelecionada;
+    }
+
+    // =====================================================
+    // NOME
+    // =====================================================
+
+    public string GetNomeSementeSelecionada()
+    {
+        if (sementeSelecionada == 0)
+            return "Nenhuma";
+
+        return GetNomeSemente(
+            sementeSelecionada
         );
+    }
 
-        arvoreNaMao = null;
+    private string GetNomeSemente(int numero)
+    {
+        switch (numero)
+        {
+            case 1:
+                return arvoreNivel1 != null
+                    ? arvoreNivel1.nome
+                    : "Árvore 1";
+
+            case 2:
+                return arvoreNivel2 != null
+                    ? arvoreNivel2.nome
+                    : "Árvore 2";
+
+            case 3:
+                return arvoreNivel3 != null
+                    ? arvoreNivel3.nome
+                    : "Árvore 3";
+
+            case 4:
+                return pinheiro != null
+                    ? pinheiro.nome
+                    : "Pinheiro";
+
+            case 5:
+                return macieira != null
+                    ? macieira.nome
+                    : "Macieira";
+        }
+
+        return "Nenhuma";
+    }
+
+    // =====================================================
+    // QUANTIDADE
+    // =====================================================
+
+    public int GetQuantidadeSemente(int numero)
+    {
+        switch (numero)
+        {
+            case 1:
+                return quantidadeArvoreNivel1;
+
+            case 2:
+                return quantidadeArvoreNivel2;
+
+            case 3:
+                return quantidadeArvoreNivel3;
+
+            case 4:
+                return quantidadePinheiro;
+
+            case 5:
+                return quantidadeMacieira;
+        }
+
+        return 0;
+    }
+
+    // =====================================================
+    // TEM SEMENTE
+    // =====================================================
+
+    public bool TemSementeSelecionada()
+    {
+        if (sementeSelecionada == 0)
+            return false;
+
+        return
+            GetQuantidadeSemente(
+                sementeSelecionada
+            ) > 0;
     }
 
     // =====================================================
@@ -696,139 +648,31 @@ public class Shop : MonoBehaviour
                 break;
         }
 
-        // =================================================
-        // REMOVER ÁRVORE DA MÃO
-        // =================================================
-
-        EsconderArvoreNaMao();
-
-        // =================================================
-        // SE ACABOU A SEMENTE
-        // =================================================
-
+        // Atualiza árvore da mão.
         if (GetQuantidadeSemente(
-                sementeSelecionada
-            ) <= 0)
+            sementeSelecionada) > 0)
+        {
+            CriarArvoreNaMao();
+        }
+        else
         {
             sementeSelecionada = 0;
+            DestruirArvoreNaMao();
         }
     }
 
     // =====================================================
-    // TEM SEMENTE SELECIONADA
-    // =====================================================
-
-    public bool TemSementeSelecionada()
-    {
-        if (sementeSelecionada == 0)
-            return false;
-
-        return
-            GetQuantidadeSemente(
-                sementeSelecionada
-            ) > 0;
-    }
-
-    // =====================================================
-    // PREFAB SELECIONADO
-    // =====================================================
-
-    public GameObject GetPrefabSementeSelecionada()
-    {
-        return GetPrefabSemente(
-            sementeSelecionada
-        );
-    }
-
-    // =====================================================
-    // NÚMERO SELECIONADO
-    // =====================================================
-
-    public int GetSementeSelecionada()
-    {
-        return sementeSelecionada;
-    }
-
-    // =====================================================
-    // NOME SELECIONADO
-    // =====================================================
-
-    public string GetNomeSementeSelecionada()
-    {
-        if (sementeSelecionada == 0)
-            return "Nenhuma";
-
-        return GetNomeSemente(
-            sementeSelecionada
-        );
-    }
-
-    private string GetNomeSemente(
-        int numero
-    )
-    {
-        switch (numero)
-        {
-            case 1:
-                return arvoreNivel1.nome;
-
-            case 2:
-                return arvoreNivel2.nome;
-
-            case 3:
-                return arvoreNivel3.nome;
-
-            case 4:
-                return pinheiro.nome;
-
-            case 5:
-                return macieira.nome;
-        }
-
-        return "Nenhuma";
-    }
-
-    // =====================================================
-    // QUANTIDADE
-    // =====================================================
-
-    public int GetQuantidadeSemente(
-        int numero
-    )
-    {
-        switch (numero)
-        {
-            case 1:
-                return quantidadeArvoreNivel1;
-
-            case 2:
-                return quantidadeArvoreNivel2;
-
-            case 3:
-                return quantidadeArvoreNivel3;
-
-            case 4:
-                return quantidadePinheiro;
-
-            case 5:
-                return quantidadeMacieira;
-        }
-
-        return 0;
-    }
-
-    // =====================================================
-    // COMPRAR REGADOR
+    // REGADOR
     // =====================================================
 
     private void ComprarRegador()
     {
-        if (possuiRegador)
+        // Se já está segurando,
+        // não compra outro.
+        if (regadorNaMao != null)
         {
-            MostrarRegador();
-
             Debug.Log(
-                "💧 Regador equipado novamente."
+                "💧 Você já está segurando o regador!"
             );
 
             return;
@@ -843,31 +687,61 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        if (holdingPoint == null)
+        if (regadorHoldingPoint == null)
         {
             Debug.LogError(
-                "❌ Holding Point não configurado!"
+                "❌ Regador Holding Point não configurado!"
             );
 
             return;
         }
 
         if (!playerMoney.RemoverDinheiro(
-                precoRegador))
+            precoRegador))
         {
             TocarSomSemDinheiro();
 
             Debug.Log(
-                "❌ Dinheiro insuficiente para o regador!"
+                "❌ Você não tem dinheiro suficiente para comprar o regador!"
             );
 
             return;
         }
 
-        possuiRegador =
-            true;
+        // Árvore sai da mão.
+        DestruirArvoreNaMao();
 
-        CriarRegador();
+        regadorNaMao =
+            Instantiate(
+                regadorPrefab,
+                regadorHoldingPoint
+            );
+
+        regadorNaMao.transform.localPosition =
+            Vector3.zero;
+
+        regadorNaMao.transform.localRotation =
+            Quaternion.identity;
+
+        regadorNaMao.transform.localScale =
+            Vector3.one;
+
+        Rigidbody[] rigidbodies =
+            regadorNaMao.GetComponentsInChildren<Rigidbody>();
+
+        foreach (Rigidbody rb in rigidbodies)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
+        Collider[] colliders =
+            regadorNaMao.GetComponentsInChildren<Collider>();
+
+        foreach (Collider col in colliders)
+        {
+            col.enabled = false;
+        }
 
         if (audioSource != null &&
             somCompraRegador != null)
@@ -878,263 +752,37 @@ public class Shop : MonoBehaviour
         }
 
         Debug.Log(
-            "💧 Regador comprado!"
+            "💧 Regador comprado e equipado!"
         );
     }
 
     // =====================================================
-    // CRIAR REGADOR
+    // GUARDAR REGADOR
     // =====================================================
 
-    private void CriarRegador()
+    public void GuardarRegador()
     {
-        if (holdingPoint == null)
-        {
-            Debug.LogError(
-                "❌ Holding Point não configurado!"
-            );
-
+        if (regadorNaMao == null)
             return;
-        }
 
-        if (regadorNaMao != null)
-        {
-            Destroy(
-                regadorNaMao
-            );
-        }
-
-        // =================================================
-        // INSTANCIAR
-        // =================================================
-
-        regadorNaMao =
-            Instantiate(
-                regadorPrefab
-            );
-
-        regadorNaMao.name =
-            "REGADOR_NA_MAO";
-
-        // =================================================
-        // PARENT
-        // =================================================
-
-        regadorNaMao.transform.SetParent(
-            holdingPoint,
-            false
+        Destroy(
+            regadorNaMao
         );
 
-        // =================================================
-        // POSIÇÃO
-        // =================================================
-
-        regadorNaMao.transform.localPosition =
-            posicaoRegadorNaMao;
-
-        // =================================================
-        // ROTAÇÃO
-        // =================================================
-
-        regadorNaMao.transform.localRotation =
-            Quaternion.Euler(
-                rotacaoRegadorNaMao
-            );
-
-        // =================================================
-        // ESCALA
-        // =================================================
-
-        regadorNaMao.transform.localScale =
-            escalaRegadorNaMao;
-
-        // =================================================
-        // RIGIDBODY
-        // =================================================
-
-        Rigidbody[] rigidbodies =
-            regadorNaMao.GetComponentsInChildren<Rigidbody>(
-                true
-            );
-
-        foreach (Rigidbody rb in rigidbodies)
-        {
-            rb.isKinematic = true;
-            rb.useGravity = false;
-        }
-
-        // =================================================
-        // COLLIDERS
-        // =================================================
-
-        Collider[] colliders =
-            regadorNaMao.GetComponentsInChildren<Collider>(
-                true
-            );
-
-        foreach (Collider col in colliders)
-        {
-            col.enabled = false;
-        }
-
-        // =================================================
-        // ATIVAR
-        // =================================================
-
-        regadorNaMao.SetActive(
-            true
-        );
-
-        regadorEquipado =
-            true;
+        regadorNaMao = null;
 
         Debug.Log(
-            "💧 Regador criado na mão!"
+            "💧 Regador saiu da mão."
         );
     }
 
     // =====================================================
-    // ALTERNAR REGADOR
-    // =====================================================
-
-    private void AlternarRegador()
-    {
-        if (!possuiRegador)
-        {
-            Debug.Log(
-                "❌ Você ainda não possui um regador."
-            );
-
-            return;
-        }
-
-        // =================================================
-        // SE ESTIVER COM ÁRVORE
-        // =================================================
-
-        if (arvoreNaMao != null)
-        {
-            EsconderArvoreNaMao();
-
-            sementeSelecionada =
-                0;
-        }
-
-        // =================================================
-        // CRIAR SE NECESSÁRIO
-        // =================================================
-
-        if (regadorNaMao == null)
-        {
-            CriarRegador();
-            return;
-        }
-
-        // =================================================
-        // ALTERNAR
-        // =================================================
-
-        if (regadorEquipado)
-        {
-            EsconderRegador();
-        }
-        else
-        {
-            MostrarRegador();
-        }
-    }
-
-    // =====================================================
-    // ESCONDER REGADOR
-    // =====================================================
-
-    private void EsconderRegador()
-    {
-        if (regadorNaMao == null)
-            return;
-
-        regadorNaMao.SetActive(
-            false
-        );
-
-        regadorEquipado =
-            false;
-    }
-
-    // =====================================================
-    // MOSTRAR REGADOR
-    // =====================================================
-
-    private void MostrarRegador()
-    {
-        if (!possuiRegador)
-            return;
-
-        // =================================================
-        // REMOVER ÁRVORE
-        // =================================================
-
-        EsconderArvoreNaMao();
-
-        sementeSelecionada =
-            0;
-
-        // =================================================
-        // CRIAR SE NECESSÁRIO
-        // =================================================
-
-        if (regadorNaMao == null)
-        {
-            CriarRegador();
-            return;
-        }
-
-        // =================================================
-        // PARENT
-        // =================================================
-
-        regadorNaMao.transform.SetParent(
-            holdingPoint,
-            false
-        );
-
-        // =================================================
-        // APLICA AJUSTES NOVAMENTE
-        // =================================================
-
-        regadorNaMao.transform.localPosition =
-            posicaoRegadorNaMao;
-
-        regadorNaMao.transform.localRotation =
-            Quaternion.Euler(
-                rotacaoRegadorNaMao
-            );
-
-        regadorNaMao.transform.localScale =
-            escalaRegadorNaMao;
-
-        regadorNaMao.SetActive(
-            true
-        );
-
-        regadorEquipado =
-            true;
-
-        Debug.Log(
-            "💧 Regador equipado!"
-        );
-    }
-
-    // =====================================================
-    // REGADOR ESTÁ NA MÃO?
+    // ESTÁ SEGURANDO REGADOR
     // =====================================================
 
     public bool EstaSegurandoRegador()
     {
-        return
-            possuiRegador &&
-            regadorNaMao != null &&
-            regadorEquipado;
+        return regadorNaMao != null;
     }
 
     // =====================================================
@@ -1143,13 +791,94 @@ public class Shop : MonoBehaviour
 
     public void UsarRegador()
     {
-        if (!EstaSegurandoRegador())
-            return;
+        if (regadorNaMao == null)
+        {
+            Debug.Log(
+                "❌ Você não está segurando o regador!"
+            );
 
-        // O regador NÃO é destruído.
+            return;
+        }
+
+        // Não destrói o regador.
+        // Apenas continua equipado.
         Debug.Log(
-            "💧 Regador utilizado!"
+            "💧 Regador usado."
         );
+    }
+
+    // =====================================================
+    // VALOR DA SEMENTE
+    // =====================================================
+
+    public int GetValorSementeSelecionada()
+    {
+        switch (sementeSelecionada)
+        {
+            case 1:
+                return arvoreNivel1 != null
+                    ? arvoreNivel1.valorBase
+                    : 0;
+
+            case 2:
+                return arvoreNivel2 != null
+                    ? arvoreNivel2.valorBase
+                    : 0;
+
+            case 3:
+                return arvoreNivel3 != null
+                    ? arvoreNivel3.valorBase
+                    : 0;
+
+            case 4:
+                return pinheiro != null
+                    ? pinheiro.valorBase
+                    : 0;
+
+            case 5:
+                return macieira != null
+                    ? macieira.valorBase
+                    : 0;
+        }
+
+        return 0;
+    }
+
+    // =====================================================
+    // VALOR POR TIPO
+    // =====================================================
+
+    public int GetValorSemente(int numero)
+    {
+        switch (numero)
+        {
+            case 1:
+                return arvoreNivel1 != null
+                    ? arvoreNivel1.valorBase
+                    : 0;
+
+            case 2:
+                return arvoreNivel2 != null
+                    ? arvoreNivel2.valorBase
+                    : 0;
+
+            case 3:
+                return arvoreNivel3 != null
+                    ? arvoreNivel3.valorBase
+                    : 0;
+
+            case 4:
+                return pinheiro != null
+                    ? pinheiro.valorBase
+                    : 0;
+
+            case 5:
+                return macieira != null
+                    ? macieira.valorBase
+                    : 0;
+        }
+
+        return 0;
     }
 
     // =====================================================
@@ -1168,7 +897,7 @@ public class Shop : MonoBehaviour
     }
 
     // =====================================================
-    // UI DA LOJA
+    // UI
     // =====================================================
 
     private void OnGUI()
@@ -1182,23 +911,19 @@ public class Shop : MonoBehaviour
                 GUI.skin.box
             );
 
-        estilo.fontSize =
-            18;
+        estilo.fontSize = 18;
 
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
-        float largura =
-            550f;
-
-        float altura =
-            390f;
+        float largura = 550f;
+        float altura = 330f;
 
         float x =
             (Screen.width - largura) / 2f;
 
         float y =
-            Screen.height - 450f;
+            Screen.height - 400f;
 
         string selecionada =
             sementeSelecionada == 0
@@ -1206,13 +931,6 @@ public class Shop : MonoBehaviour
                 : GetNomeSemente(
                     sementeSelecionada
                 );
-
-        string estadoRegador =
-            !possuiRegador
-                ? "Não comprado"
-                : regadorEquipado
-                    ? "Equipado"
-                    : "Guardado";
 
         string texto =
             "🛒 LOJA\n\n" +
@@ -1257,16 +975,18 @@ public class Shop : MonoBehaviour
             quantidadeMacieira +
             "]\n\n" +
 
-            "Q - Comprar Regador - R$" +
+            "R - Regador - R$" +
             precoRegador +
-
-            "\nR - Equipar / Guardar Regador" +
 
             "\n\n🌱 Selecionada: " +
             selecionada +
 
             "\n💧 Regador: " +
-            estadoRegador +
+            (
+                regadorNaMao != null
+                    ? "NA MÃO"
+                    : "GUARDADO"
+            ) +
 
             "\n💰 Dinheiro: R$" +
             playerMoney.GetDinheiro();

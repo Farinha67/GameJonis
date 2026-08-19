@@ -3,20 +3,42 @@ using UnityEngine.InputSystem;
 
 public class Colheitadeira : MonoBehaviour
 {
+    // =====================================================
+    // CONFIGURAÇÃO
+    // =====================================================
+
     [Header("Configuração")]
     public float distanciaParaColher = 4f;
+
+    // =====================================================
+    // PAGAMENTO
+    // =====================================================
+
+    [Header("Pagamento")]
+    public int dinheiroPorArvore = 50;
+
+    // =====================================================
+    // PLAYER
+    // =====================================================
 
     private Transform player;
     private PlayerMoney playerMoney;
 
+    // =====================================================
+    // START
+    // =====================================================
+
     private void Start()
     {
         GameObject objPlayer =
-            GameObject.FindGameObjectWithTag("Player");
+            GameObject.FindGameObjectWithTag(
+                "Player"
+            );
 
         if (objPlayer != null)
         {
-            player = objPlayer.transform;
+            player =
+                objPlayer.transform;
 
             playerMoney =
                 objPlayer.GetComponent<PlayerMoney>();
@@ -25,17 +47,21 @@ public class Colheitadeira : MonoBehaviour
         if (player == null)
         {
             Debug.LogError(
-                "❌ Player não encontrado! Verifique a Tag Player."
+                "❌ Player não encontrado!"
             );
         }
 
         if (playerMoney == null)
         {
             Debug.LogError(
-                "❌ PlayerMoney não encontrado no Player!"
+                "❌ PlayerMoney não encontrado!"
             );
         }
     }
+
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     private void Update()
     {
@@ -46,11 +72,19 @@ public class Colheitadeira : MonoBehaviour
         if (Keyboard.current == null)
             return;
 
+        // =================================================
+        // F = COLHER
+        // =================================================
+
         if (Keyboard.current.fKey.wasPressedThisFrame)
         {
             TentarColher();
         }
     }
+
+    // =====================================================
+    // TENTAR COLHER
+    // =====================================================
 
     private void TentarColher()
     {
@@ -60,7 +94,8 @@ public class Colheitadeira : MonoBehaviour
                 player.position
             );
 
-        if (distanciaPlayer > distanciaParaColher)
+        if (distanciaPlayer >
+            distanciaParaColher)
         {
             Debug.Log(
                 "🚜 Você está muito longe da colheitadeira!"
@@ -75,7 +110,6 @@ public class Colheitadeira : MonoBehaviour
             );
 
         int quantidadeColhida = 0;
-        int dinheiroGanho = 0;
 
         foreach (PlantSpot spot in spots)
         {
@@ -97,26 +131,18 @@ public class Colheitadeira : MonoBehaviour
                     posicaoArvore
                 );
 
-            if (distanciaArvore > distanciaParaColher)
+            if (distanciaArvore >
+                distanciaParaColher)
+            {
                 continue;
-
-            // Guarda o valor ANTES de destruir
-            int valor =
-                spot.GetValorArvore();
+            }
 
             if (spot.ColherArvore())
             {
                 quantidadeColhida++;
 
-                dinheiroGanho += valor;
-
                 Debug.Log(
                     "🌳 Árvore colhida!"
-                );
-
-                Debug.Log(
-                    "💰 Valor dessa árvore: R$" +
-                    valor
                 );
             }
         }
@@ -137,6 +163,10 @@ public class Colheitadeira : MonoBehaviour
         // =================================================
         // PAGAMENTO
         // =================================================
+
+        int dinheiroGanho =
+            quantidadeColhida *
+            dinheiroPorArvore;
 
         playerMoney.AdicionarDinheiro(
             dinheiroGanho
