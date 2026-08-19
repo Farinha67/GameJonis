@@ -39,10 +39,8 @@ public class Shop : MonoBehaviour
     public int precoRegador = 15;
     public GameObject regadorPrefab;
 
-    [Tooltip("Ponto onde a árvore aparece na mão.")]
     public Transform holdingPoint;
 
-    [Tooltip("Ponto onde o regador aparece na mão.")]
     public Transform regadorHoldingPoint;
 
     // =====================================================
@@ -63,14 +61,15 @@ public class Shop : MonoBehaviour
     // SONS
     // =====================================================
 
-    [Header("Sons da Loja")]
-    public AudioSource audioSource;
+    [Header("SOM DE COMPRA")]
     public AudioClip somCompraSemente;
     public AudioClip somCompraRegador;
 
-    [Header("Som - Sem Dinheiro")]
-    public AudioSource audioSourceSemDinheiro;
+    [Header("SOM SEM DINHEIRO")]
     public AudioClip somSemDinheiro;
+
+    private AudioSource audioCompra;
+    private AudioSource audioSemDinheiro;
 
     // =====================================================
     // PLAYER
@@ -109,21 +108,16 @@ public class Shop : MonoBehaviour
 
     private int sementeSelecionada = 0;
 
-    /*
-        0 = nenhuma
-        1 = árvore nível 1
-        2 = árvore nível 2
-        3 = árvore nível 3
-        4 = pinheiro
-        5 = macieira
-    */
-
     // =====================================================
     // START
     // =====================================================
 
     private void Start()
     {
+        // -------------------------------------------------
+        // PLAYER
+        // -------------------------------------------------
+
         GameObject playerObject =
             GameObject.FindGameObjectWithTag("Player");
 
@@ -148,12 +142,38 @@ public class Shop : MonoBehaviour
             );
         }
 
-        // Se não tiver um ponto específico para o regador,
-        // usa o holdingPoint.
+        // -------------------------------------------------
+        // HOLDING POINT DO REGADOR
+        // -------------------------------------------------
+
         if (regadorHoldingPoint == null)
         {
             regadorHoldingPoint = holdingPoint;
         }
+
+        // -------------------------------------------------
+        // CRIA AUDIO SOURCE AUTOMATICAMENTE
+        // -------------------------------------------------
+
+        audioCompra = gameObject.AddComponent<AudioSource>();
+
+        audioCompra.playOnAwake = false;
+        audioCompra.loop = false;
+        audioCompra.spatialBlend = 0f;
+        audioCompra.volume = 1f;
+
+        // -------------------------------------------------
+        // AUDIO SOURCE PARA SEM DINHEIRO
+        // -------------------------------------------------
+
+        audioSemDinheiro = gameObject.AddComponent<AudioSource>();
+
+        audioSemDinheiro.playOnAwake = false;
+        audioSemDinheiro.loop = false;
+        audioSemDinheiro.spatialBlend = 0f;
+        audioSemDinheiro.volume = 1f;
+
+        Debug.Log("🔊 Audio da loja configurado!");
     }
 
     // =====================================================
@@ -184,6 +204,10 @@ public class Shop : MonoBehaviour
 
         if (playerPerto)
         {
+            // -------------------------------------------------
+            // SEMENTE 1
+            // -------------------------------------------------
+
             if (Keyboard.current.digit1Key.wasPressedThisFrame)
             {
                 ComprarSemente(
@@ -191,6 +215,10 @@ public class Shop : MonoBehaviour
                     1
                 );
             }
+
+            // -------------------------------------------------
+            // SEMENTE 2
+            // -------------------------------------------------
 
             if (Keyboard.current.digit2Key.wasPressedThisFrame)
             {
@@ -200,6 +228,10 @@ public class Shop : MonoBehaviour
                 );
             }
 
+            // -------------------------------------------------
+            // SEMENTE 3
+            // -------------------------------------------------
+
             if (Keyboard.current.digit3Key.wasPressedThisFrame)
             {
                 ComprarSemente(
@@ -207,6 +239,10 @@ public class Shop : MonoBehaviour
                     3
                 );
             }
+
+            // -------------------------------------------------
+            // PINHEIRO
+            // -------------------------------------------------
 
             if (Keyboard.current.digit4Key.wasPressedThisFrame)
             {
@@ -216,6 +252,10 @@ public class Shop : MonoBehaviour
                 );
             }
 
+            // -------------------------------------------------
+            // MACIEIRA
+            // -------------------------------------------------
+
             if (Keyboard.current.digit5Key.wasPressedThisFrame)
             {
                 ComprarSemente(
@@ -224,7 +264,10 @@ public class Shop : MonoBehaviour
                 );
             }
 
-            // R = comprar/pegar regador
+            // -------------------------------------------------
+            // REGADOR
+            // -------------------------------------------------
+
             if (Keyboard.current.rKey.wasPressedThisFrame)
             {
                 ComprarRegador();
@@ -293,8 +336,16 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        if (!playerMoney.RemoverDinheiro(
-            semente.preco))
+        // -------------------------------------------------
+        // TENTA PAGAR
+        // -------------------------------------------------
+
+        bool conseguiuPagar =
+            playerMoney.RemoverDinheiro(
+                semente.preco
+            );
+
+        if (!conseguiuPagar)
         {
             TocarSomSemDinheiro();
 
@@ -306,15 +357,21 @@ public class Shop : MonoBehaviour
             return;
         }
 
+        // -------------------------------------------------
+        // ADICIONA SEMENTE
+        // -------------------------------------------------
+
         AdicionarSemente(numero);
 
-        if (audioSource != null &&
-            somCompraSemente != null)
-        {
-            audioSource.PlayOneShot(
-                somCompraSemente
-            );
-        }
+        // -------------------------------------------------
+        // SOM DA COMPRA
+        // -------------------------------------------------
+
+        TocarSomCompraSemente();
+
+        Debug.Log(
+            "🔊 SOM DE COMPRA DE SEMENTE TOCADO!"
+        );
 
         Debug.Log(
             "🌱 Comprou: " +
@@ -329,6 +386,37 @@ public class Shop : MonoBehaviour
         Debug.Log(
             "💰 Saldo: R$" +
             playerMoney.GetDinheiro()
+        );
+    }
+
+    // =====================================================
+    // SOM COMPRA SEMENTE
+    // =====================================================
+
+    private void TocarSomCompraSemente()
+    {
+        if (somCompraSemente == null)
+        {
+            Debug.LogError(
+                "❌ SOM COMPRA SEMENTE NÃO FOI COLOCADO NO SHOP!"
+            );
+
+            return;
+        }
+
+        if (audioCompra == null)
+        {
+            audioCompra =
+                gameObject.AddComponent<AudioSource>();
+
+            audioCompra.playOnAwake = false;
+            audioCompra.loop = false;
+            audioCompra.spatialBlend = 0f;
+        }
+
+        audioCompra.PlayOneShot(
+            somCompraSemente,
+            1f
         );
     }
 
@@ -383,11 +471,8 @@ public class Shop : MonoBehaviour
         sementeSelecionada =
             numero;
 
-        // Ao selecionar árvore,
-        // o regador sai da mão.
         GuardarRegador();
 
-        // Mostra a árvore na mão.
         CriarArvoreNaMao();
 
         Debug.Log(
@@ -443,9 +528,9 @@ public class Shop : MonoBehaviour
             Quaternion.identity;
 
         arvoreNaMao.transform.localScale =
-            Vector3.one * escalaArvoreNaMao;
+            Vector3.one *
+            escalaArvoreNaMao;
 
-        // Desliga física da árvore na mão.
         Rigidbody[] rigidbodies =
             arvoreNaMao.GetComponentsInChildren<Rigidbody>();
 
@@ -462,14 +547,10 @@ public class Shop : MonoBehaviour
         {
             col.enabled = false;
         }
-
-        Debug.Log(
-            "🌳 Árvore apareceu na mão!"
-        );
     }
 
     // =====================================================
-    // DESTRUIR ÁRVORE DA MÃO
+    // DESTRUIR ÁRVORE
     // =====================================================
 
     private void DestruirArvoreNaMao()
@@ -648,9 +729,9 @@ public class Shop : MonoBehaviour
                 break;
         }
 
-        // Atualiza árvore da mão.
         if (GetQuantidadeSemente(
-            sementeSelecionada) > 0)
+            sementeSelecionada
+        ) > 0)
         {
             CriarArvoreNaMao();
         }
@@ -667,8 +748,6 @@ public class Shop : MonoBehaviour
 
     private void ComprarRegador()
     {
-        // Se já está segurando,
-        // não compra outro.
         if (regadorNaMao != null)
         {
             Debug.Log(
@@ -696,20 +775,35 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        if (!playerMoney.RemoverDinheiro(
-            precoRegador))
+        // -------------------------------------------------
+        // TENTA PAGAR
+        // -------------------------------------------------
+
+        bool conseguiuPagar =
+            playerMoney.RemoverDinheiro(
+                precoRegador
+            );
+
+        if (!conseguiuPagar)
         {
             TocarSomSemDinheiro();
 
             Debug.Log(
-                "❌ Você não tem dinheiro suficiente para comprar o regador!"
+                "❌ Você não tem dinheiro suficiente!"
             );
 
             return;
         }
 
-        // Árvore sai da mão.
+        // -------------------------------------------------
+        // ÁRVORE SAI DA MÃO
+        // -------------------------------------------------
+
         DestruirArvoreNaMao();
+
+        // -------------------------------------------------
+        // CRIA REGADOR
+        // -------------------------------------------------
 
         regadorNaMao =
             Instantiate(
@@ -743,16 +837,80 @@ public class Shop : MonoBehaviour
             col.enabled = false;
         }
 
-        if (audioSource != null &&
-            somCompraRegador != null)
-        {
-            audioSource.PlayOneShot(
-                somCompraRegador
-            );
-        }
+        // -------------------------------------------------
+        // SOM DA COMPRA
+        // -------------------------------------------------
+
+        TocarSomCompraRegador();
+
+        Debug.Log(
+            "🔊 SOM DE COMPRA DO REGADOR TOCADO!"
+        );
 
         Debug.Log(
             "💧 Regador comprado e equipado!"
+        );
+    }
+
+    // =====================================================
+    // SOM COMPRA REGADOR
+    // =====================================================
+
+    private void TocarSomCompraRegador()
+    {
+        if (somCompraRegador == null)
+        {
+            Debug.LogError(
+                "❌ SOM COMPRA REGADOR NÃO FOI COLOCADO NO SHOP!"
+            );
+
+            return;
+        }
+
+        if (audioCompra == null)
+        {
+            audioCompra =
+                gameObject.AddComponent<AudioSource>();
+
+            audioCompra.playOnAwake = false;
+            audioCompra.loop = false;
+            audioCompra.spatialBlend = 0f;
+        }
+
+        audioCompra.PlayOneShot(
+            somCompraRegador,
+            1f
+        );
+    }
+
+    // =====================================================
+    // SOM SEM DINHEIRO
+    // =====================================================
+
+    private void TocarSomSemDinheiro()
+    {
+        if (somSemDinheiro == null)
+        {
+            Debug.LogError(
+                "❌ SOM SEM DINHEIRO NÃO FOI COLOCADO!"
+            );
+
+            return;
+        }
+
+        if (audioSemDinheiro == null)
+        {
+            audioSemDinheiro =
+                gameObject.AddComponent<AudioSource>();
+
+            audioSemDinheiro.playOnAwake = false;
+            audioSemDinheiro.loop = false;
+            audioSemDinheiro.spatialBlend = 0f;
+        }
+
+        audioSemDinheiro.PlayOneShot(
+            somSemDinheiro,
+            1f
         );
     }
 
@@ -770,10 +928,6 @@ public class Shop : MonoBehaviour
         );
 
         regadorNaMao = null;
-
-        Debug.Log(
-            "💧 Regador saiu da mão."
-        );
     }
 
     // =====================================================
@@ -800,8 +954,6 @@ public class Shop : MonoBehaviour
             return;
         }
 
-        // Não destrói o regador.
-        // Apenas continua equipado.
         Debug.Log(
             "💧 Regador usado."
         );
@@ -879,21 +1031,6 @@ public class Shop : MonoBehaviour
         }
 
         return 0;
-    }
-
-    // =====================================================
-    // SOM SEM DINHEIRO
-    // =====================================================
-
-    private void TocarSomSemDinheiro()
-    {
-        if (audioSourceSemDinheiro != null &&
-            somSemDinheiro != null)
-        {
-            audioSourceSemDinheiro.PlayOneShot(
-                somSemDinheiro
-            );
-        }
     }
 
     // =====================================================
