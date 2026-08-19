@@ -3,51 +3,35 @@ using UnityEngine.InputSystem;
 
 public class RegadorPickup : MonoBehaviour
 {
-    // =====================================================
-    // HOLDING POINT
-    // =====================================================
-
     [Header("Holding Point")]
     public Transform holdingPoint;
 
-    // =====================================================
-    // DISTÂNCIA
-    // =====================================================
-
-    [Header("Distância")]
+    [Header("Distância para pegar")]
     public float distanciaPegar = 3f;
 
-    // =====================================================
-    // ÁGUA
-    // =====================================================
+    [Header("Distância para soltar")]
+    public float distanciaSoltar = 1.2f;
+
+    [Header("Segurança contra paredes")]
+    public float raioSeguranca = 0.25f;
+    public float distanciaDaParede = 0.15f;
+    public LayerMask camadaColisao = ~0;
 
     [Header("Água")]
-    [Tooltip("Quantidade máxima de água que o regador pode carregar.")]
+    [Min(1)]
     public int capacidadeMaxima = 5;
 
-    [Tooltip("Quantidade de água inicial.")]
-    public int aguaInicial = 0;
-
-    private int quantidadeAgua;
-
-    // =====================================================
-    // REGADOR
-    // =====================================================
+    [SerializeField]
+    private int aguaAtual = 0;
 
     private GameObject regadorNaMao;
+    private Rigidbody rbRegador;
+    private Collider[] collidersRegador;
 
-    // =====================================================
-    // START
-    // =====================================================
+    private bool estaNaMao = false;
 
-    private void Start()
-    {
-        quantidadeAgua = Mathf.Clamp(
-            aguaInicial,
-            0,
-            capacidadeMaxima
-        );
-    }
+    // Escala original do regador
+    private Vector3 escalaOriginalRegador;
 
     // =====================================================
     // UPDATE
@@ -58,17 +42,177 @@ public class RegadorPickup : MonoBehaviour
         if (Keyboard.current == null)
             return;
 
-        if (Keyboard.current.eKey.wasPressedThisFrame)
+        if (!Keyboard.current.eKey.wasPressedThisFrame)
+            return;
+
+        // =================================================
+        // NÃO ESTÁ SEGURANDO
+        // =================================================
+
+        if (regadorNaMao == null)
         {
-            if (regadorNaMao == null)
+            TentarPegar();
+            return;
+        }
+
+        // =================================================
+        // ESTÁ MIRANDO NO POÇO
+        // =================================================
+        // IMPORTANTE:
+        // Se estiver olhando para o poço, NÃO solta.
+        // O PocoAgua.cs poderá usar o mesmo E para
+        // encher o regador.
+        // =================================================
+
+        if (EstaMirandoNoPoco())
+        {
+            return;
+        }
+
+        // =================================================
+        // ESTÁ MIRANDO EM ÁRVORE
+        // =================================================
+        // O PlantSpot vai cuidar da rega.
+        // =================================================
+
+        if (EstaMirandoEmArvore())
+        {
+            return;
+        }
+
+        // =================================================
+        // NÃO ESTÁ MIRANDO EM POÇO NEM ÁRVORE
+        // =================================================
+        // Então pode soltar.
+        // =================================================
+
+        Soltar();
+    }
+
+    // =====================================================
+    // VERIFICAR POÇO
+    // =====================================================
+
+    private bool EstaMirandoNoPoco()
+    {
+        Camera cam = Camera.main;
+
+        if (cam == null)
+            return false;
+
+        Ray ray = new Ray(
+            cam.transform.position,
+            cam.transform.forward
+        );
+
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray,
+            distanciaPegar,
+            ~0,
+            QueryTriggerInteraction.Collide
+        );
+
+        if (hits == null || hits.Length == 0)
+            return false;
+
+        System.Array.Sort(
+            hits,
+            (a, b) =>
+                a.distance.CompareTo(b.distance)
+        );
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider == null)
+                continue;
+
+            PocoAgua poco =
+                hit.collider.GetComponent<PocoAgua>();
+
+            if (poco == null)
             {
-                TentarPegar();
+                poco =
+                    hit.collider.GetComponentInParent<PocoAgua>();
             }
-            else
+
+            if (poco == null)
             {
-                Soltar();
+                poco =
+                    hit.collider.GetComponentInChildren<PocoAgua>();
+            }
+
+            if (poco != null)
+            {
+                return true;
             }
         }
+
+        return false;
+    }
+
+    // =====================================================
+    // VERIFICAR ÁRVORE
+    // =====================================================
+
+    private bool EstaMirandoEmArvore()
+    {
+        Camera cam = Camera.main;
+
+        if (cam == null)
+            return false;
+
+        Ray ray = new Ray(
+            cam.transform.position,
+            cam.transform.forward
+        );
+
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray,
+            distanciaPegar,
+            ~0,
+            QueryTriggerInteraction.Collide
+        );
+
+        if (hits == null || hits.Length == 0)
+            return false;
+
+        System.Array.Sort(
+            hits,
+            (a, b) =>
+                a.distance.CompareTo(b.distance)
+        );
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider == null)
+                continue;
+
+            PlantSpot spot =
+                hit.collider.GetComponent<PlantSpot>();
+
+            if (spot == null)
+            {
+                spot =
+                    hit.collider.GetComponentInParent<PlantSpot>();
+            }
+
+            if (spot == null)
+            {
+                spot =
+                    hit.collider.GetComponentInChildren<PlantSpot>();
+            }
+
+            if (spot == null)
+                continue;
+
+            if (!spot.controladorDePlantio &&
+                spot.TemArvore())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // =====================================================
@@ -77,21 +221,15 @@ public class RegadorPickup : MonoBehaviour
 
     private void TentarPegar()
     {
-        if (holdingPoint == null)
-        {
-            Debug.LogError(
-                "❌ Holding Point do regador não configurado!"
-            );
-
-            return;
-        }
-
         Camera cam = Camera.main;
 
         if (cam == null)
+            return;
+
+        if (holdingPoint == null)
         {
             Debug.LogError(
-                "❌ Câmera principal não encontrada!"
+                "❌ Holding Point não configurado!"
             );
 
             return;
@@ -101,6 +239,9 @@ public class RegadorPickup : MonoBehaviour
             cam.transform.position,
             cam.transform.forward
         );
+
+        // Procura todos os objetos no caminho.
+        // Isso evita a lixeira bloquear o regador.
 
         RaycastHit[] hits = Physics.RaycastAll(
             ray,
@@ -118,93 +259,384 @@ public class RegadorPickup : MonoBehaviour
                 a.distance.CompareTo(b.distance)
         );
 
+        GameObject objetoRegador = null;
+
         foreach (RaycastHit hit in hits)
         {
-            if (!hit.collider.CompareTag("Regador"))
+            if (hit.collider == null)
                 continue;
 
-            regadorNaMao = hit.collider.gameObject;
+            GameObject encontrado =
+                EncontrarRegador(hit.collider);
 
-            regadorNaMao.transform.SetParent(
-                holdingPoint
-            );
-
-            regadorNaMao.transform.localPosition =
-                Vector3.zero;
-
-            regadorNaMao.transform.localRotation =
-                Quaternion.identity;
-
-            Rigidbody[] rigidbodies =
-                regadorNaMao.GetComponentsInChildren<Rigidbody>();
-
-            foreach (Rigidbody rb in rigidbodies)
+            if (encontrado != null)
             {
-                rb.isKinematic = true;
-                rb.useGravity = false;
+                objetoRegador = encontrado;
+                break;
             }
+        }
 
-            Collider[] colliders =
-                regadorNaMao.GetComponentsInChildren<Collider>();
-
-            foreach (Collider col in colliders)
-            {
-                col.enabled = false;
-            }
-
+        if (objetoRegador == null)
+        {
             Debug.Log(
-                "💧 Regador pegado!"
-            );
-
-            Debug.Log(
-                "💧 Água: " +
-                quantidadeAgua +
-                "/" +
-                capacidadeMaxima
+                "❌ Nenhum regador encontrado."
             );
 
             return;
         }
+
+        // =================================================
+        // REGADOR
+        // =================================================
+
+        regadorNaMao =
+            objetoRegador;
+
+        // =================================================
+        // SALVAR ESCALA ORIGINAL
+        // =================================================
+
+        escalaOriginalRegador =
+            regadorNaMao.transform.lossyScale;
+
+        // =================================================
+        // RIGIDBODY
+        // =================================================
+
+        rbRegador =
+            regadorNaMao.GetComponent<Rigidbody>();
+
+        if (rbRegador == null)
+        {
+            rbRegador =
+                regadorNaMao.GetComponentInChildren<Rigidbody>();
+        }
+
+        // =================================================
+        // COLLIDERS
+        // =================================================
+
+        collidersRegador =
+            regadorNaMao.GetComponentsInChildren<Collider>(
+                true
+            );
+
+        // =================================================
+        // DESATIVAR FÍSICA
+        // =================================================
+
+        if (rbRegador != null)
+        {
+            rbRegador.isKinematic = true;
+            rbRegador.useGravity = false;
+
+            rbRegador.linearVelocity =
+                Vector3.zero;
+
+            rbRegador.angularVelocity =
+                Vector3.zero;
+        }
+
+        // =================================================
+        // DESATIVAR COLLIDERS
+        // =================================================
+
+        if (collidersRegador != null)
+        {
+            foreach (Collider col in collidersRegador)
+            {
+                if (col != null)
+                    col.enabled = false;
+            }
+        }
+
+        // =================================================
+        // COLOCAR NA MÃO
+        // =================================================
+
+        regadorNaMao.transform.SetParent(
+            holdingPoint,
+            true
+        );
+
+        regadorNaMao.transform.position =
+            holdingPoint.position;
+
+        regadorNaMao.transform.rotation =
+            holdingPoint.rotation;
+
+        // =================================================
+        // MANTER ESCALA ORIGINAL
+        // =================================================
+
+        Vector3 escalaPai =
+            holdingPoint.lossyScale;
+
+        if (
+            Mathf.Abs(escalaPai.x) > 0.0001f &&
+            Mathf.Abs(escalaPai.y) > 0.0001f &&
+            Mathf.Abs(escalaPai.z) > 0.0001f
+        )
+        {
+            regadorNaMao.transform.localScale =
+                new Vector3(
+                    escalaOriginalRegador.x / escalaPai.x,
+                    escalaOriginalRegador.y / escalaPai.y,
+                    escalaOriginalRegador.z / escalaPai.z
+                );
+        }
+
+        estaNaMao = true;
+
+        Debug.Log(
+            "💧 Regador pegado!"
+        );
+
+        Debug.Log(
+            "💧 Água: " +
+            aguaAtual +
+            "/" +
+            capacidadeMaxima
+        );
+    }
+
+    // =====================================================
+    // ENCONTRAR REGADOR
+    // =====================================================
+
+    private GameObject EncontrarRegador(
+        Collider collider
+    )
+    {
+        if (collider == null)
+            return null;
+
+        // =================================================
+        // SUBIR HIERARQUIA
+        // =================================================
+
+        Transform atual =
+            collider.transform;
+
+        while (atual != null)
+        {
+            if (atual.CompareTag("Regador"))
+            {
+                return atual.gameObject;
+            }
+
+            atual =
+                atual.parent;
+        }
+
+        // =================================================
+        // PROCURAR NOS FILHOS
+        // =================================================
+
+        Transform[] filhos =
+            collider.GetComponentsInChildren<Transform>(
+                true
+            );
+
+        foreach (Transform filho in filhos)
+        {
+            if (filho.CompareTag("Regador"))
+            {
+                return filho.gameObject;
+            }
+        }
+
+        return null;
     }
 
     // =====================================================
     // SOLTAR
     // =====================================================
 
-    private void Soltar()
+    public void Soltar()
     {
         if (regadorNaMao == null)
             return;
 
+        Vector3 direcao =
+            transform.forward;
+
         Camera cam = Camera.main;
 
-        if (cam == null)
-            return;
+        if (cam != null)
+        {
+            direcao =
+                cam.transform.forward;
+        }
 
-        regadorNaMao.transform.SetParent(null);
+        direcao.y = 0f;
+
+        if (direcao.sqrMagnitude < 0.01f)
+        {
+            direcao =
+                transform.forward;
+
+            direcao.y = 0f;
+        }
+
+        direcao.Normalize();
+
+        // =================================================
+        // POSIÇÃO BASE
+        // =================================================
+
+        Vector3 origem =
+            transform.position +
+            Vector3.up * 0.5f;
+
+        Vector3 posicaoSoltar =
+            origem +
+            direcao * distanciaSoltar;
+
+        posicaoSoltar.y =
+            transform.position.y + 0.5f;
+
+        // =================================================
+        // PROCURAR PAREDE
+        // =================================================
+
+        if (Physics.SphereCast(
+            origem,
+            raioSeguranca,
+            direcao,
+            out RaycastHit hitParede,
+            distanciaSoltar,
+            camadaColisao,
+            QueryTriggerInteraction.Ignore
+        ))
+        {
+            posicaoSoltar =
+                hitParede.point -
+                direcao *
+                (raioSeguranca + distanciaDaParede);
+
+            posicaoSoltar.y =
+                transform.position.y + 0.5f;
+        }
+
+        // =================================================
+        // EVITAR NASCER DENTRO DE OBJETO
+        // =================================================
+
+        Collider[] bloqueios =
+            Physics.OverlapSphere(
+                posicaoSoltar,
+                raioSeguranca,
+                camadaColisao,
+                QueryTriggerInteraction.Ignore
+            );
+
+        if (bloqueios.Length > 0)
+        {
+            posicaoSoltar =
+                transform.position +
+                direcao * 0.4f;
+
+            posicaoSoltar.y =
+                transform.position.y + 0.5f;
+
+            Collider[] segundaVerificacao =
+                Physics.OverlapSphere(
+                    posicaoSoltar,
+                    raioSeguranca,
+                    camadaColisao,
+                    QueryTriggerInteraction.Ignore
+                );
+
+            if (segundaVerificacao.Length > 0)
+            {
+                posicaoSoltar =
+                    transform.position +
+                    Vector3.up * 0.5f;
+            }
+        }
+
+        // =================================================
+        // GARANTIR CHÃO
+        // =================================================
+
+        Ray rayChao =
+            new Ray(
+                posicaoSoltar + Vector3.up * 2f,
+                Vector3.down
+            );
+
+        if (Physics.Raycast(
+            rayChao,
+            out RaycastHit hitChao,
+            5f,
+            camadaColisao,
+            QueryTriggerInteraction.Ignore
+        ))
+        {
+            float alturaMinima =
+                hitChao.point.y + 0.15f;
+
+            if (posicaoSoltar.y < alturaMinima)
+            {
+                posicaoSoltar.y =
+                    alturaMinima;
+            }
+        }
+
+        // =================================================
+        // TIRAR DA MÃO
+        // =================================================
+
+        regadorNaMao.transform.SetParent(
+            null,
+            true
+        );
 
         regadorNaMao.transform.position =
-            cam.transform.position +
-            cam.transform.forward * 1.5f;
+            posicaoSoltar;
 
-        Rigidbody[] rigidbodies =
-            regadorNaMao.GetComponentsInChildren<Rigidbody>();
+        // =================================================
+        // ESCALA ORIGINAL
+        // =================================================
 
-        foreach (Rigidbody rb in rigidbodies)
+        regadorNaMao.transform.localScale =
+            escalaOriginalRegador;
+
+        // =================================================
+        // FÍSICA
+        // =================================================
+
+        if (rbRegador != null)
         {
-            rb.isKinematic = false;
-            rb.useGravity = true;
+            rbRegador.isKinematic = false;
+            rbRegador.useGravity = true;
+
+            rbRegador.linearVelocity =
+                Vector3.zero;
+
+            rbRegador.angularVelocity =
+                Vector3.zero;
         }
 
-        Collider[] colliders =
-            regadorNaMao.GetComponentsInChildren<Collider>();
+        // =================================================
+        // COLLIDERS
+        // =================================================
 
-        foreach (Collider col in colliders)
+        if (collidersRegador != null)
         {
-            col.enabled = true;
+            foreach (Collider col in collidersRegador)
+            {
+                if (col != null)
+                    col.enabled = true;
+            }
         }
+
+        estaNaMao = false;
 
         regadorNaMao = null;
+        rbRegador = null;
+        collidersRegador = null;
 
         Debug.Log(
             "💧 Regador solto!"
@@ -212,12 +644,47 @@ public class RegadorPickup : MonoBehaviour
     }
 
     // =====================================================
-    // ESTÁ SEGURANDO
+    // ENCHER REGADOR
     // =====================================================
 
-    public bool EstaSegurandoRegador()
+    public void EncherRegador()
     {
-        return regadorNaMao != null;
+        aguaAtual =
+            capacidadeMaxima;
+
+        Debug.Log(
+            "💧 Regador cheio: " +
+            aguaAtual +
+            "/" +
+            capacidadeMaxima
+        );
+    }
+
+    // =====================================================
+    // USAR ÁGUA
+    // =====================================================
+
+    public bool UsarAgua()
+    {
+        if (aguaAtual <= 0)
+        {
+            Debug.Log(
+                "❌ Regador vazio!"
+            );
+
+            return false;
+        }
+
+        aguaAtual--;
+
+        Debug.Log(
+            "💧 Água usada! Restam: " +
+            aguaAtual +
+            "/" +
+            capacidadeMaxima
+        );
+
+        return true;
     }
 
     // =====================================================
@@ -226,16 +693,25 @@ public class RegadorPickup : MonoBehaviour
 
     public bool TemAgua()
     {
-        return quantidadeAgua > 0;
+        return aguaAtual > 0;
     }
 
     // =====================================================
-    // PEGAR QUANTIDADE
+    // ÁGUA ATUAL
+    // =====================================================
+
+    public int GetAguaAtual()
+    {
+        return aguaAtual;
+    }
+
+    // =====================================================
+    // COMPATIBILIDADE COM POÇO
     // =====================================================
 
     public int GetQuantidadeAgua()
     {
-        return quantidadeAgua;
+        return aguaAtual;
     }
 
     // =====================================================
@@ -248,96 +724,50 @@ public class RegadorPickup : MonoBehaviour
     }
 
     // =====================================================
-    // GASTAR ÁGUA
+    // CHEIO
     // =====================================================
 
-    public bool UsarAgua()
+    public bool EstaCheio()
     {
-        if (!EstaSegurandoRegador())
-        {
-            Debug.Log(
-                "❌ Você não está segurando o regador!"
-            );
-
-            return false;
-        }
-
-        if (quantidadeAgua <= 0)
-        {
-            Debug.Log(
-                "❌ O regador está vazio!"
-            );
-
-            return false;
-        }
-
-        quantidadeAgua--;
-
-        Debug.Log(
-            "💧 Água utilizada!"
-        );
-
-        Debug.Log(
-            "💧 Água restante: " +
-            quantidadeAgua +
-            "/" +
-            capacidadeMaxima
-        );
-
-        return true;
+        return aguaAtual >= capacidadeMaxima;
     }
 
     // =====================================================
-    // ENCHER REGADOR
+    // VAZIO
     // =====================================================
 
-    public bool EncherRegador()
+    public bool EstaVazio()
     {
-        if (!EstaSegurandoRegador())
-        {
-            Debug.Log(
-                "❌ Você precisa estar segurando o regador!"
-            );
-
-            return false;
-        }
-
-        if (quantidadeAgua >= capacidadeMaxima)
-        {
-            Debug.Log(
-                "💧 O regador já está cheio!"
-            );
-
-            return false;
-        }
-
-        quantidadeAgua = capacidadeMaxima;
-
-        Debug.Log(
-            "💧 REGADOR CHEIO!"
-        );
-
-        Debug.Log(
-            "💧 Água: " +
-            quantidadeAgua +
-            "/" +
-            capacidadeMaxima
-        );
-
-        return true;
+        return aguaAtual <= 0;
     }
 
     // =====================================================
-    // ESVAZIAR
+    // ESTÁ SEGURANDO
     // =====================================================
 
-    public void EsvaziarRegador()
+    public bool EstaSegurando()
     {
-        quantidadeAgua = 0;
+        return
+            regadorNaMao != null &&
+            estaNaMao;
+    }
 
-        Debug.Log(
-            "💧 Regador esvaziado."
-        );
+    // =====================================================
+    // COMPATIBILIDADE
+    // =====================================================
+
+    public bool EstaSegurandoRegador()
+    {
+        return EstaSegurando();
+    }
+
+    // =====================================================
+    // COMPATIBILIDADE ANTIGA
+    // =====================================================
+
+    public bool UsarRegador()
+    {
+        return UsarAgua();
     }
 
     // =====================================================
@@ -346,7 +776,7 @@ public class RegadorPickup : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!EstaSegurandoRegador())
+        if (!estaNaMao)
             return;
 
         GUIStyle estilo =
@@ -354,7 +784,7 @@ public class RegadorPickup : MonoBehaviour
                 GUI.skin.box
             );
 
-        estilo.fontSize = 18;
+        estilo.fontSize = 16;
 
         estilo.fontStyle =
             FontStyle.Bold;
@@ -362,27 +792,54 @@ public class RegadorPickup : MonoBehaviour
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
-        string texto =
-            "💧 ÁGUA: " +
-            quantidadeAgua +
-            "/" +
-            capacidadeMaxima;
-
-        if (quantidadeAgua <= 0)
-        {
-            texto +=
-                "\n⚠️ REGADOR VAZIO";
-        }
-
         GUI.Box(
             new Rect(
-                Screen.width - 230f,
-                20f,
-                210f,
-                65f
+                Screen.width - 220f,
+                Screen.height - 100f,
+                200f,
+                60f
             ),
-            texto,
+            "💧 ÁGUA\n" +
+            aguaAtual +
+            " / " +
+            capacidadeMaxima,
             estilo
+        );
+    }
+
+    // =====================================================
+    // GIZMO
+    // =====================================================
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color =
+            Color.cyan;
+
+        Vector3 origem =
+            transform.position +
+            Vector3.up * 0.5f;
+
+        Vector3 direcao =
+            transform.forward;
+
+        direcao.y = 0f;
+
+        if (direcao.sqrMagnitude > 0.01f)
+            direcao.Normalize();
+
+        Vector3 ponto =
+            origem +
+            direcao * distanciaSoltar;
+
+        Gizmos.DrawWireSphere(
+            ponto,
+            raioSeguranca
+        );
+
+        Gizmos.DrawLine(
+            origem,
+            ponto
         );
     }
 }
