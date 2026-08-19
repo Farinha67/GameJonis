@@ -28,10 +28,6 @@ public class PlantArea : MonoBehaviour
             areaPlantio = GetComponent<MeshCollider>();
     }
 
-    // =====================================================
-    // PODE PLANTAR
-    // =====================================================
-
     public bool PodePlantar(Vector3 ponto)
     {
         if (areaPlantio == null)
@@ -86,18 +82,13 @@ public class PlantArea : MonoBehaviour
         return false;
     }
 
-    // =====================================================
-    // VISUAL
-    // =====================================================
-
     private void OnDrawGizmos()
     {
         if (!mostrarAreaNoEditor)
             return;
 
         if (areaPlantio == null)
-            areaPlantio =
-                GetComponent<MeshCollider>();
+            areaPlantio = GetComponent<MeshCollider>();
 
         if (areaPlantio == null)
             return;

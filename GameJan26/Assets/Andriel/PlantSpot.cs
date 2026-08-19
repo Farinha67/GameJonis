@@ -17,11 +17,75 @@ public class PlantSpot : MonoBehaviour
     public float tempoParaCrescer = 10f;
 
     [Header("Controlador")]
-    [Tooltip("ATIVADO somente no PlantSpot que está na cena.")]
     public bool controladorDePlantio = true;
 
     [Header("Raycast do Chão")]
     public LayerMask camadaDoChao = ~0;
+
+    // =====================================================
+    // TAMANHO DA ÁRVORE
+    // =====================================================
+
+    [System.Serializable]
+    public class TamanhoArvore
+    {
+        public string nome = "Normal";
+
+        [Tooltip("Escala final da árvore.")]
+        public float escala = 1f;
+
+        [Tooltip("Chance de aparecer em porcentagem.")]
+        [Range(0f, 100f)]
+        public float chance = 50f;
+
+        [Tooltip("Dinheiro recebido ao colher.")]
+        public int dinheiro = 50;
+    }
+
+    [Header("Tamanhos das Árvores")]
+    public TamanhoArvore pequena = new TamanhoArvore
+    {
+        nome = "Pequena",
+        escala = 0.75f,
+        chance = 30f,
+        dinheiro = 30
+    };
+
+    public TamanhoArvore normal = new TamanhoArvore
+    {
+        nome = "Normal",
+        escala = 1f,
+        chance = 45f,
+        dinheiro = 50
+    };
+
+    public TamanhoArvore grande = new TamanhoArvore
+    {
+        nome = "Grande",
+        escala = 1.5f,
+        chance = 18f,
+        dinheiro = 100
+    };
+
+    public TamanhoArvore enorme = new TamanhoArvore
+    {
+        nome = "Enorme",
+        escala = 2f,
+        chance = 6f,
+        dinheiro = 250
+    };
+
+    public TamanhoArvore colossal = new TamanhoArvore
+    {
+        nome = "COLOSSAL",
+        escala = 3f,
+        chance = 1f,
+        dinheiro = 1000
+    };
+
+    // =====================================================
+    // SONS
+    // =====================================================
 
     [Header("Som de Plantio")]
     public AudioSource audioSource;
@@ -40,9 +104,17 @@ public class PlantSpot : MonoBehaviour
     public float volumeMaximo = 1f;
     public float volumeMinimo = 0f;
 
+    // =====================================================
+    // PLAYER
+    // =====================================================
+
     private Transform player;
     private Shop loja;
     private Camera cam;
+
+    // =====================================================
+    // ÁRVORE
+    // =====================================================
 
     [HideInInspector]
     public GameObject arvoreAtual;
@@ -56,6 +128,18 @@ public class PlantSpot : MonoBehaviour
     [HideInInspector]
     public bool terminouDeCrescer;
 
+    // =====================================================
+    // TAMANHO SORTEADO
+    // =====================================================
+
+    [HideInInspector]
+    public string tamanhoArvore = "Normal";
+
+    [HideInInspector]
+    public float escalaArvore = 1f;
+
+    [HideInInspector]
+    public int dinheiroArvore = 50;
 
     // =====================================================
     // START
@@ -68,8 +152,7 @@ public class PlantSpot : MonoBehaviour
 
         if (playerObject != null)
         {
-            player =
-                playerObject.transform;
+            player = playerObject.transform;
         }
         else
         {
@@ -78,14 +161,10 @@ public class PlantSpot : MonoBehaviour
             );
         }
 
-        loja =
-            FindFirstObjectByType<Shop>();
+        loja = FindFirstObjectByType<Shop>();
 
-        cam =
-            Camera.main;
+        cam = Camera.main;
 
-        // Se esse PlantSpot é o controlador da cena,
-        // ele não representa uma árvore.
         if (controladorDePlantio)
         {
             arvoreAtual = null;
@@ -95,14 +174,12 @@ public class PlantSpot : MonoBehaviour
         }
     }
 
-
     // =====================================================
     // UPDATE
     // =====================================================
 
     private void Update()
     {
-        // PlantSpot das árvores NÃO processa E.
         if (!controladorDePlantio)
         {
             AtualizarSomCrescimento();
@@ -127,9 +204,8 @@ public class PlantSpot : MonoBehaviour
         }
     }
 
-
     // =====================================================
-    // PROCESSAR INTERAÇÃO
+    // INTERAÇÃO
     // =====================================================
 
     private void ProcessarInteracao()
@@ -142,16 +218,11 @@ public class PlantSpot : MonoBehaviour
 
         Ray ray =
             cam.ViewportPointToRay(
-                new Vector3(
-                    0.5f,
-                    0.5f,
-                    0f
-                )
+                new Vector3(0.5f, 0.5f, 0f)
             );
 
-
         // =================================================
-        // PRIMEIRO: VERIFICAR ÁRVORE
+        // PRIMEIRO: ÁRVORE
         // =================================================
 
         RaycastHit[] hitsArvore =
@@ -168,13 +239,10 @@ public class PlantSpot : MonoBehaviour
                 a.distance.CompareTo(b.distance)
         );
 
-
         foreach (RaycastHit hit in hitsArvore)
         {
             PlantSpot plantaMirada =
-                EncontrarPlantSpot(
-                    hit.collider
-                );
+                EncontrarPlantSpot(hit.collider);
 
             if (plantaMirada == null)
                 continue;
@@ -187,12 +255,6 @@ public class PlantSpot : MonoBehaviour
 
             if (!plantaMirada.TemArvore())
                 continue;
-
-
-            Debug.Log(
-                "🌳 Você está mirando em uma árvore."
-            );
-
 
             if (!plantaMirada.foiRegada)
             {
@@ -208,9 +270,8 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-
         // =================================================
-        // DEPOIS: PROCURAR O CHÃO
+        // CHÃO
         // =================================================
 
         RaycastHit hitChao;
@@ -229,9 +290,8 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-
         // =================================================
-        // ÁREA DE PLANTIO
+        // ÁREA
         // =================================================
 
         if (areaPlantio == null)
@@ -243,33 +303,27 @@ public class PlantSpot : MonoBehaviour
         if (areaPlantio == null)
         {
             Debug.LogError(
-                "❌ Nenhum PlantArea foi encontrado na cena!"
+                "❌ Nenhum PlantArea encontrado!"
             );
 
             return;
         }
 
-
-        if (!areaPlantio.PodePlantar(
-                hitChao.point))
+        if (!areaPlantio.PodePlantar(hitChao.point))
         {
             Debug.Log(
-                "❌ Esse ponto está fora da área de plantio."
+                "❌ Fora da área de plantio."
             );
 
             return;
         }
-
 
         // =================================================
         // SHOP
         // =================================================
 
         if (loja == null)
-        {
-            loja =
-                FindFirstObjectByType<Shop>();
-        }
+            loja = FindFirstObjectByType<Shop>();
 
         if (loja == null)
         {
@@ -280,11 +334,6 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-
-        // =================================================
-        // SEMENTE
-        // =================================================
-
         if (!loja.TemSementeSelecionada())
         {
             Debug.Log(
@@ -294,39 +343,28 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-
         // =================================================
-        // DISTÂNCIA ENTRE ÁRVORES
+        // ESPAÇO
         // =================================================
 
-        if (!PodePlantarAqui(
-                hitChao.point))
-        {
+        if (!PodePlantarAqui(hitChao.point))
             return;
-        }
-
 
         // =================================================
         // PLANTAR
         // =================================================
 
-        PlantarNovaArvore(
-            hitChao.point
-        );
+        PlantarNovaArvore(hitChao.point);
     }
-
 
     // =====================================================
     // ENCONTRAR PLANTSPOT
     // =====================================================
 
-    private PlantSpot EncontrarPlantSpot(
-        Collider collider
-    )
+    private PlantSpot EncontrarPlantSpot(Collider collider)
     {
         if (collider == null)
             return null;
-
 
         PlantSpot spot =
             collider.GetComponent<PlantSpot>();
@@ -334,34 +372,25 @@ public class PlantSpot : MonoBehaviour
         if (spot != null)
             return spot;
 
-
         spot =
             collider.GetComponentInParent<PlantSpot>();
 
         if (spot != null)
             return spot;
 
-
-        spot =
-            collider.GetComponentInChildren<PlantSpot>();
-
-        return spot;
+        return collider.GetComponentInChildren<PlantSpot>();
     }
 
-
     // =====================================================
-    // VERIFICAR ESPAÇO ENTRE ÁRVORES
+    // ESPAÇO
     // =====================================================
 
-    private bool PodePlantarAqui(
-        Vector3 ponto
-    )
+    private bool PodePlantarAqui(Vector3 ponto)
     {
         PlantSpot[] spots =
             FindObjectsByType<PlantSpot>(
                 FindObjectsSortMode.None
             );
-
 
         foreach (PlantSpot spot in spots)
         {
@@ -374,16 +403,13 @@ public class PlantSpot : MonoBehaviour
             if (!spot.TemArvore())
                 continue;
 
-
             float distancia =
                 Vector3.Distance(
                     ponto,
                     spot.GetPosicaoArvore()
                 );
 
-
-            if (distancia <
-                distanciaEntreArvores)
+            if (distancia < distanciaEntreArvores)
             {
                 Debug.Log(
                     "🌳 Muito perto de outra árvore!"
@@ -393,32 +419,42 @@ public class PlantSpot : MonoBehaviour
             }
         }
 
-
         return true;
     }
 
-
     // =====================================================
-    // PLANTAR NOVA ÁRVORE
+    // PLANTAR
     // =====================================================
 
-    private void PlantarNovaArvore(
-        Vector3 ponto
-    )
+    private void PlantarNovaArvore(Vector3 ponto)
     {
         GameObject prefab =
             loja.GetPrefabSementeSelecionada();
 
-
         if (prefab == null)
         {
             Debug.LogError(
-                "❌ O prefab da árvore não foi encontrado!"
+                "❌ Prefab da árvore não encontrado!"
             );
 
             return;
         }
 
+        // =================================================
+        // SORTEAR TAMANHO
+        // =================================================
+
+        TamanhoArvore tamanho =
+            SortearTamanhoArvore();
+
+        if (tamanho == null)
+        {
+            Debug.LogError(
+                "❌ Não foi possível sortear o tamanho."
+            );
+
+            return;
+        }
 
         // =================================================
         // CRIAR ÁRVORE
@@ -431,25 +467,20 @@ public class PlantSpot : MonoBehaviour
                 Quaternion.identity
             );
 
-
+        // Começa pequena
         novaArvore.transform.localScale =
             Vector3.one * 0.3f;
 
-
         // =================================================
-        // CRIAR PLANTSPOT AUTOMATICAMENTE
+        // PLANTSPOT
         // =================================================
 
         GameObject objetoSpot =
-            new GameObject(
-                "PlantSpot"
-            );
-
+            new GameObject("PlantSpot");
 
         objetoSpot.transform.SetParent(
             novaArvore.transform
         );
-
 
         objetoSpot.transform.localPosition =
             Vector3.zero;
@@ -457,17 +488,14 @@ public class PlantSpot : MonoBehaviour
         objetoSpot.transform.localRotation =
             Quaternion.identity;
 
-
         PlantSpot novoSpot =
             objetoSpot.AddComponent<PlantSpot>();
 
-
         // =================================================
-        // CONFIGURAÇÃO DO NOVO PLANTSPOT
+        // CONFIGURAÇÃO
         // =================================================
 
-        novoSpot.controladorDePlantio =
-            false;
+        novoSpot.controladorDePlantio = false;
 
         novoSpot.areaPlantio =
             areaPlantio;
@@ -484,6 +512,18 @@ public class PlantSpot : MonoBehaviour
         novoSpot.camadaDoChao =
             camadaDoChao;
 
+        // =================================================
+        // TAMANHO SORTEADO
+        // =================================================
+
+        novoSpot.tamanhoArvore =
+            tamanho.nome;
+
+        novoSpot.escalaArvore =
+            tamanho.escala;
+
+        novoSpot.dinheiroArvore =
+            tamanho.dinheiro;
 
         // =================================================
         // SONS
@@ -516,23 +556,16 @@ public class PlantSpot : MonoBehaviour
         novoSpot.volumeMinimo =
             volumeMinimo;
 
-
         // =================================================
-        // ESTADO INICIAL
+        // ESTADO
         // =================================================
 
         novoSpot.arvoreAtual =
             novaArvore;
 
-        novoSpot.foiRegada =
-            false;
-
-        novoSpot.crescendo =
-            false;
-
-        novoSpot.terminouDeCrescer =
-            false;
-
+        novoSpot.foiRegada = false;
+        novoSpot.crescendo = false;
+        novoSpot.terminouDeCrescer = false;
 
         // =================================================
         // CONSUMIR SEMENTE
@@ -540,9 +573,8 @@ public class PlantSpot : MonoBehaviour
 
         loja.ConsumirSemente();
 
-
         // =================================================
-        // SOM DE PLANTIO
+        // SOM
         // =================================================
 
         if (audioSource != null &&
@@ -553,15 +585,78 @@ public class PlantSpot : MonoBehaviour
             );
         }
 
-
         Debug.Log(
             "🌱 ÁRVORE PLANTADA!"
         );
+
+        Debug.Log(
+            "📏 Tamanho: " +
+            tamanho.nome
+        );
+
+        Debug.Log(
+            "📐 Escala final: " +
+            tamanho.escala
+        );
+
+        Debug.Log(
+            "💰 Valor: R$" +
+            tamanho.dinheiro
+        );
     }
 
+    // =====================================================
+    // SORTEAR TAMANHO
+    // =====================================================
+
+    private TamanhoArvore SortearTamanhoArvore()
+    {
+        float total =
+            pequena.chance +
+            normal.chance +
+            grande.chance +
+            enorme.chance +
+            colossal.chance;
+
+        if (total <= 0f)
+        {
+            Debug.LogError(
+                "❌ Todas as chances de tamanho estão em 0!"
+            );
+
+            return normal;
+        }
+
+        float sorteio =
+            Random.Range(0f, total);
+
+        float acumulado = 0f;
+
+        acumulado += pequena.chance;
+
+        if (sorteio <= acumulado)
+            return pequena;
+
+        acumulado += normal.chance;
+
+        if (sorteio <= acumulado)
+            return normal;
+
+        acumulado += grande.chance;
+
+        if (sorteio <= acumulado)
+            return grande;
+
+        acumulado += enorme.chance;
+
+        if (sorteio <= acumulado)
+            return enorme;
+
+        return colossal;
+    }
 
     // =====================================================
-    // TENTAR REGAR
+    // REGAR
     // =====================================================
 
     public void TentarRegar()
@@ -569,23 +664,11 @@ public class PlantSpot : MonoBehaviour
         if (foiRegada)
             return;
 
+        if (loja == null)
+            loja = FindFirstObjectByType<Shop>();
 
         if (loja == null)
-        {
-            loja =
-                FindFirstObjectByType<Shop>();
-        }
-
-
-        if (loja == null)
-        {
-            Debug.LogError(
-                "❌ Shop não encontrada!"
-            );
-
             return;
-        }
-
 
         if (!loja.EstaSegurandoRegador())
         {
@@ -596,10 +679,8 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
-
         Regar();
     }
-
 
     // =====================================================
     // REGAR
@@ -610,14 +691,7 @@ public class PlantSpot : MonoBehaviour
         if (foiRegada)
             return;
 
-
-        foiRegada =
-            true;
-
-
-        // =================================================
-        // SOM DE REGAR
-        // =================================================
+        foiRegada = true;
 
         if (regarAudioSource != null &&
             somRegar != null)
@@ -627,52 +701,31 @@ public class PlantSpot : MonoBehaviour
             );
         }
 
-
-        // =================================================
-        // USAR REGADOR
-        // =================================================
-
         loja.UsarRegador();
 
-
-        Debug.Log(
-            "💧 ÁRVORE REGADA!"
-        );
-
-
-        // =================================================
-        // COMEÇAR CRESCIMENTO
-        // =================================================
+        Debug.Log("💧 ÁRVORE REGADA!");
 
         StartCoroutine(
             CrescerArvore()
         );
     }
 
-
     // =====================================================
-    // CRESCER ÁRVORE
+    // CRESCER
     // =====================================================
 
     private IEnumerator CrescerArvore()
     {
-        crescendo =
-            true;
-
-        terminouDeCrescer =
-            false;
-
+        crescendo = true;
+        terminouDeCrescer = false;
 
         Vector3 escalaInicial =
             Vector3.one * 0.3f;
 
         Vector3 escalaFinal =
-            Vector3.one;
+            Vector3.one * escalaArvore;
 
-
-        float tempo =
-            0f;
-
+        float tempo = 0f;
 
         // =================================================
         // SOM
@@ -693,14 +746,11 @@ public class PlantSpot : MonoBehaviour
             crescimentoAudioSource.Play();
         }
 
-
         // =================================================
-        // CRESCER
+        // CRESCIMENTO
         // =================================================
 
-        while (
-            tempo <
-            tempoParaCrescer)
+        while (tempo < tempoParaCrescer)
         {
             if (arvoreAtual == null)
             {
@@ -712,17 +762,12 @@ public class PlantSpot : MonoBehaviour
                 yield break;
             }
 
-
-            tempo +=
-                Time.deltaTime;
-
+            tempo += Time.deltaTime;
 
             float porcentagem =
                 Mathf.Clamp01(
-                    tempo /
-                    tempoParaCrescer
+                    tempo / tempoParaCrescer
                 );
-
 
             arvoreAtual.transform.localScale =
                 Vector3.Lerp(
@@ -731,10 +776,8 @@ public class PlantSpot : MonoBehaviour
                     porcentagem
                 );
 
-
             yield return null;
         }
-
 
         // =================================================
         // FINAL
@@ -746,26 +789,28 @@ public class PlantSpot : MonoBehaviour
                 escalaFinal;
         }
 
-
         PararSomCrescimento();
 
-
-        crescendo =
-            false;
-
-
-        terminouDeCrescer =
-            true;
-
+        crescendo = false;
+        terminouDeCrescer = true;
 
         Debug.Log(
-            "🌳 ÁRVORE CRESCEU E ESTÁ PRONTA PARA COLHER!"
+            "🌳 ÁRVORE CRESCEU!"
+        );
+
+        Debug.Log(
+            "📏 Tamanho: " +
+            tamanhoArvore
+        );
+
+        Debug.Log(
+            "💰 Valor: R$" +
+            dinheiroArvore
         );
     }
 
-
     // =====================================================
-    // SOM DE CRESCIMENTO
+    // SOM
     // =====================================================
 
     private void AtualizarSomCrescimento()
@@ -779,20 +824,17 @@ public class PlantSpot : MonoBehaviour
         if (player == null)
             return;
 
-
         float distancia =
             Vector3.Distance(
                 transform.position,
                 player.position
             );
 
-
         float porcentagem =
             Mathf.Clamp01(
                 distancia /
                 distanciaMaximaSom
             );
-
 
         crescimentoAudioSource.volume =
             Mathf.Lerp(
@@ -802,19 +844,11 @@ public class PlantSpot : MonoBehaviour
             );
     }
 
-
-    // =====================================================
-    // PARAR SOM
-    // =====================================================
-
     private void PararSomCrescimento()
     {
         if (crescimentoAudioSource != null)
-        {
             crescimentoAudioSource.Stop();
-        }
     }
-
 
     // =====================================================
     // PODE COLHER
@@ -829,7 +863,6 @@ public class PlantSpot : MonoBehaviour
             terminouDeCrescer;
     }
 
-
     // =====================================================
     // TEM ÁRVORE
     // =====================================================
@@ -841,9 +874,8 @@ public class PlantSpot : MonoBehaviour
             arvoreAtual != null;
     }
 
-
     // =====================================================
-    // POSIÇÃO DA ÁRVORE
+    // POSIÇÃO
     // =====================================================
 
     public Vector3 GetPosicaoArvore()
@@ -851,10 +883,17 @@ public class PlantSpot : MonoBehaviour
         if (arvoreAtual == null)
             return transform.position;
 
-
         return arvoreAtual.transform.position;
     }
 
+    // =====================================================
+    // VALOR DA ÁRVORE
+    // =====================================================
+
+    public int GetValorArvore()
+    {
+        return dinheiroArvore;
+    }
 
     // =====================================================
     // COLHER
@@ -865,46 +904,41 @@ public class PlantSpot : MonoBehaviour
         if (!PodeColher())
         {
             Debug.Log(
-                "❌ Essa árvore ainda não está pronta para colher!"
+                "❌ Essa árvore ainda não está pronta!"
             );
 
             return false;
         }
 
-
         PararSomCrescimento();
-
 
         GameObject arvore =
             arvoreAtual;
-
-
-        arvoreAtual =
-            null;
-
-        foiRegada =
-            false;
-
-        crescendo =
-            false;
-
-        terminouDeCrescer =
-            false;
-
-
-        Destroy(
-            arvore
-        );
-
 
         Debug.Log(
             "🚜 ÁRVORE COLHIDA!"
         );
 
+        Debug.Log(
+            "📏 Tamanho: " +
+            tamanhoArvore
+        );
+
+        Debug.Log(
+            "💰 Valor: R$" +
+            dinheiroArvore
+        );
+
+        arvoreAtual = null;
+
+        foiRegada = false;
+        crescendo = false;
+        terminouDeCrescer = false;
+
+        Destroy(arvore);
 
         return true;
     }
-
 
     // =====================================================
     // UI
@@ -915,14 +949,11 @@ public class PlantSpot : MonoBehaviour
         if (!controladorDePlantio)
             return;
 
-
         if (cam == null)
             cam = Camera.main;
 
-
         if (cam == null)
             return;
-
 
         Ray ray =
             cam.ViewportPointToRay(
@@ -933,7 +964,6 @@ public class PlantSpot : MonoBehaviour
                 )
             );
 
-
         RaycastHit[] hits =
             Physics.RaycastAll(
                 ray,
@@ -942,13 +972,11 @@ public class PlantSpot : MonoBehaviour
                 QueryTriggerInteraction.Collide
             );
 
-
         System.Array.Sort(
             hits,
             (a, b) =>
                 a.distance.CompareTo(b.distance)
         );
-
 
         foreach (RaycastHit hit in hits)
         {
@@ -957,10 +985,8 @@ public class PlantSpot : MonoBehaviour
                     hit.collider
                 );
 
-
             if (spot == null)
                 continue;
-
 
             if (!spot.controladorDePlantio &&
                 spot.TemArvore())
@@ -980,40 +1006,29 @@ public class PlantSpot : MonoBehaviour
                 else if (spot.terminouDeCrescer)
                 {
                     MostrarTexto(
-                        "🌳 ÁRVORE PRONTA PARA COLHER"
+                        "🌳 " +
+                        spot.tamanhoArvore +
+                        " - R$" +
+                        spot.dinheiroArvore
                     );
                 }
-
 
                 return;
             }
         }
     }
 
-
-    // =====================================================
-    // TEXTO
-    // =====================================================
-
-    private void MostrarTexto(
-        string texto
-    )
+    private void MostrarTexto(string texto)
     {
         GUIStyle estilo =
             new GUIStyle(
                 GUI.skin.box
             );
 
-
-        estilo.fontSize =
-            18;
-
-        estilo.fontStyle =
-            FontStyle.Bold;
-
+        estilo.fontSize = 18;
+        estilo.fontStyle = FontStyle.Bold;
         estilo.alignment =
             TextAnchor.MiddleCenter;
-
 
         GUI.Box(
             new Rect(
