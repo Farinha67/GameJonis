@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerPickup : MonoBehaviour
@@ -18,6 +18,35 @@ public class PlayerPickup : MonoBehaviour
 
     private GameObject heldObject;
 
+    private Camera playerCamera;
+
+    void Start()
+    {
+        // =========================
+        // ENCONTRAR CÂMERA
+        // =========================
+
+        playerCamera = Camera.main;
+
+        if (playerCamera == null)
+        {
+            Debug.LogError(
+                "❌ PlayerPickup: Nenhuma câmera encontrada com a Tag 'MainCamera'!"
+            );
+        }
+
+        // =========================
+        // VERIFICAR HOLDING POINT
+        // =========================
+
+        if (holdingPoint == null)
+        {
+            Debug.LogError(
+                "❌ PlayerPickup: Holding Point não foi colocado no Inspector!"
+            );
+        }
+    }
+
     void Update()
     {
         if (Keyboard.current == null)
@@ -25,10 +54,19 @@ public class PlayerPickup : MonoBehaviour
 
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
+            // =========================
+            // PEGAR
+            // =========================
+
             if (heldObject == null)
             {
                 TryPickup();
             }
+
+            // =========================
+            // SOLTAR
+            // =========================
+
             else
             {
                 DropObject();
@@ -36,57 +74,180 @@ public class PlayerPickup : MonoBehaviour
         }
     }
 
+    // =====================================================
+    // PEGAR OBJETO
+    // =====================================================
+
     void TryPickup()
     {
+        // =========================
+        // VERIFICAR CÂMERA
+        // =========================
+
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main;
+
+            if (playerCamera == null)
+            {
+                Debug.LogError(
+                    "❌ PlayerPickup: Câmera não encontrada!"
+                );
+
+                return;
+            }
+        }
+
+        // =========================
+        // VERIFICAR HOLDING POINT
+        // =========================
+
+        if (holdingPoint == null)
+        {
+            Debug.LogError(
+                "❌ PlayerPickup: Holding Point não está configurado!"
+            );
+
+            return;
+        }
+
+        // =========================
+        // RAYCAST
+        // =========================
+
         Ray ray = new Ray(
-            Camera.main.transform.position,
-            Camera.main.transform.forward
+            playerCamera.transform.position,
+            playerCamera.transform.forward
         );
 
-        if (Physics.Raycast(ray, out RaycastHit hit, pickupDistance))
+        if (Physics.Raycast(
+            ray,
+            out RaycastHit hit,
+            pickupDistance
+        ))
         {
-            if (hit.collider.CompareTag("Pickup"))
+            // =========================
+            // VERIFICAR TAG
+            // =========================
+
+            if (!hit.collider.CompareTag("Pickup"))
             {
-                heldObject = hit.collider.gameObject;
-
-                Rigidbody rb = heldObject.GetComponent<Rigidbody>();
-
-                if (rb != null)
-                {
-                    rb.isKinematic = true;
-                    rb.useGravity = false;
-                }
-
-                Collider col = heldObject.GetComponent<Collider>();
-
-                if (col != null)
-                {
-                    col.enabled = false;
-                }
-
-                heldObject.transform.SetParent(holdingPoint);
-
-                heldObject.transform.localPosition = Vector3.zero;
-                heldObject.transform.localRotation = Quaternion.identity;
-
-                // Som de pegar
-                if (pickupAudioSource != null && pickupSound != null)
-                {
-                    pickupAudioSource.PlayOneShot(pickupSound);
-                }
+                return;
             }
+
+            // =========================
+            // PEGAR OBJETO
+            // =========================
+
+            heldObject = hit.collider.gameObject;
+
+            // =========================
+            // RIGIDBODY
+            // =========================
+
+            Rigidbody rb =
+                heldObject.GetComponent<Rigidbody>();
+
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            // =========================
+            // COLLIDER
+            // =========================
+
+            Collider col =
+                heldObject.GetComponent<Collider>();
+
+            if (col != null)
+            {
+                col.enabled = false;
+            }
+
+            // =========================
+            // COLOCAR NA MÃO
+            // =========================
+
+            heldObject.transform.SetParent(
+                holdingPoint
+            );
+
+            heldObject.transform.localPosition =
+                Vector3.zero;
+
+            heldObject.transform.localRotation =
+                Quaternion.identity;
+
+            // =========================
+            // SOM
+            // =========================
+
+            if (pickupAudioSource != null &&
+                pickupSound != null)
+            {
+                pickupAudioSource.PlayOneShot(
+                    pickupSound
+                );
+            }
+
+            Debug.Log(
+                "📦 Objeto pego: " +
+                heldObject.name
+            );
         }
     }
 
+    // =====================================================
+    // SOLTAR OBJETO
+    // =====================================================
+
     void DropObject()
     {
+        // =========================
+        // SEGURANÇA
+        // =========================
+
+        if (heldObject == null)
+            return;
+
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main;
+
+            if (playerCamera == null)
+            {
+                Debug.LogError(
+                    "❌ PlayerPickup: Câmera não encontrada!"
+                );
+
+                return;
+            }
+        }
+
+        // =========================
+        // TIRAR DA MÃO
+        // =========================
+
         heldObject.transform.SetParent(null);
 
-        heldObject.transform.position =
-            Camera.main.transform.position +
-            Camera.main.transform.forward * 1.5f;
+        // =========================
+        // POSIÇÃO DE DROP
+        // =========================
 
-        Rigidbody rb = heldObject.GetComponent<Rigidbody>();
+        heldObject.transform.position =
+            playerCamera.transform.position +
+            playerCamera.transform.forward * 1.5f;
+
+        // =========================
+        // RIGIDBODY
+        // =========================
+
+        Rigidbody rb =
+            heldObject.GetComponent<Rigidbody>();
 
         if (rb != null)
         {
@@ -94,19 +255,55 @@ public class PlayerPickup : MonoBehaviour
             rb.useGravity = true;
         }
 
-        Collider col = heldObject.GetComponent<Collider>();
+        // =========================
+        // COLLIDER
+        // =========================
+
+        Collider col =
+            heldObject.GetComponent<Collider>();
 
         if (col != null)
         {
             col.enabled = true;
         }
 
-        // Som de soltar
-        if (pickupAudioSource != null && dropSound != null)
+        // =========================
+        // SOM
+        // =========================
+
+        if (pickupAudioSource != null &&
+            dropSound != null)
         {
-            pickupAudioSource.PlayOneShot(dropSound);
+            pickupAudioSource.PlayOneShot(
+                dropSound
+            );
         }
 
+        Debug.Log(
+            "📦 Objeto soltado."
+        );
+
+        // =========================
+        // LIMPAR
+        // =========================
+
         heldObject = null;
+    }
+
+    // =====================================================
+    // GIZMO
+    // =====================================================
+
+    void OnDrawGizmosSelected()
+    {
+        if (Camera.main == null)
+            return;
+
+        Gizmos.color = Color.yellow;
+
+        Gizmos.DrawRay(
+            Camera.main.transform.position,
+            Camera.main.transform.forward * pickupDistance
+        );
     }
 }
