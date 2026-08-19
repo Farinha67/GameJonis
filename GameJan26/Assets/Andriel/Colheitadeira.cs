@@ -6,32 +6,21 @@ public class Colheitadeira : MonoBehaviour
     [Header("Configuração")]
     public float distanciaParaColher = 4f;
 
-    [Header("Pagamento")]
-    public int dinheiroPorArvore = 50;
-
     private Transform player;
     private PlayerMoney playerMoney;
-
-
-    // =====================================================
-    // START
-    // =====================================================
 
     private void Start()
     {
         GameObject objPlayer =
             GameObject.FindGameObjectWithTag("Player");
 
-
         if (objPlayer != null)
         {
-            player =
-                objPlayer.transform;
+            player = objPlayer.transform;
 
             playerMoney =
                 objPlayer.GetComponent<PlayerMoney>();
         }
-
 
         if (player == null)
         {
@@ -39,7 +28,6 @@ public class Colheitadeira : MonoBehaviour
                 "❌ Player não encontrado! Verifique a Tag Player."
             );
         }
-
 
         if (playerMoney == null)
         {
@@ -49,32 +37,20 @@ public class Colheitadeira : MonoBehaviour
         }
     }
 
-
-    // =====================================================
-    // UPDATE
-    // =====================================================
-
     private void Update()
     {
         if (player == null ||
             playerMoney == null)
             return;
 
-
         if (Keyboard.current == null)
             return;
-
 
         if (Keyboard.current.fKey.wasPressedThisFrame)
         {
             TentarColher();
         }
     }
-
-
-    // =====================================================
-    // TENTAR COLHER
-    // =====================================================
 
     private void TentarColher()
     {
@@ -84,9 +60,7 @@ public class Colheitadeira : MonoBehaviour
                 player.position
             );
 
-
-        if (distanciaPlayer >
-            distanciaParaColher)
+        if (distanciaPlayer > distanciaParaColher)
         {
             Debug.Log(
                 "🚜 Você está muito longe da colheitadeira!"
@@ -95,34 +69,27 @@ public class Colheitadeira : MonoBehaviour
             return;
         }
 
-
         PlantSpot[] spots =
             FindObjectsByType<PlantSpot>(
                 FindObjectsSortMode.None
             );
 
-
-        int quantidadeColhida =
-            0;
-
+        int quantidadeColhida = 0;
+        int dinheiroGanho = 0;
 
         foreach (PlantSpot spot in spots)
         {
             if (spot == null)
                 continue;
 
-
             if (!spot.TemArvore())
                 continue;
-
 
             if (!spot.PodeColher())
                 continue;
 
-
             Vector3 posicaoArvore =
                 spot.GetPosicaoArvore();
-
 
             float distanciaArvore =
                 Vector3.Distance(
@@ -130,81 +97,73 @@ public class Colheitadeira : MonoBehaviour
                     posicaoArvore
                 );
 
-
-            if (distanciaArvore >
-                distanciaParaColher)
-            {
+            if (distanciaArvore > distanciaParaColher)
                 continue;
-            }
 
+            // Guarda o valor ANTES de destruir
+            int valor =
+                spot.GetValorArvore();
 
             if (spot.ColherArvore())
             {
                 quantidadeColhida++;
 
+                dinheiroGanho += valor;
 
                 Debug.Log(
                     "🌳 Árvore colhida!"
                 );
+
+                Debug.Log(
+                    "💰 Valor dessa árvore: R$" +
+                    valor
+                );
             }
         }
 
-
         // =================================================
-        // NENHUMA ÁRVORE
+        // NENHUMA
         // =================================================
 
         if (quantidadeColhida == 0)
         {
             Debug.Log(
-                "❌ Nenhuma árvore pronta dentro do alcance da colheitadeira."
+                "❌ Nenhuma árvore pronta dentro do alcance."
             );
 
             return;
         }
 
-
         // =================================================
         // PAGAMENTO
         // =================================================
-
-        int dinheiroGanho =
-            quantidadeColhida *
-            dinheiroPorArvore;
-
 
         playerMoney.AdicionarDinheiro(
             dinheiroGanho
         );
 
-
         Debug.Log(
             "=============================="
         );
 
-
         Debug.Log(
             "🚜 COLHEITA CONCLUÍDA!"
         );
-
 
         Debug.Log(
             "🌳 Árvores colhidas: " +
             quantidadeColhida
         );
 
-
         Debug.Log(
             "💰 Dinheiro ganho: R$" +
             dinheiroGanho
         );
 
-
         Debug.Log(
             "💵 Saldo atual: R$" +
             playerMoney.GetDinheiro()
         );
-
 
         Debug.Log(
             "=============================="
