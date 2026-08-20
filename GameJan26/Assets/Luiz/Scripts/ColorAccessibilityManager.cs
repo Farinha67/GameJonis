@@ -77,30 +77,8 @@ public class ColorAccessibilityManager : MonoBehaviour
         }
     }
 
-    private void Update()
+    public void SetColorModeFromInt(int modeIndex)
     {
-        
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            SetColorMode(ColorMode.Normal);
-        }
-
-        
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            SetColorMode(ColorMode.Protanopia);
-        }
-
-       
-        if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            SetColorMode(ColorMode.Deuteranopia);
-        }
-
-       
-        if (Input.GetKeyDown(KeyCode.Alpha4))
-        {
-            SetColorMode(ColorMode.Tritanopia);
-        }
+        SetColorMode((ColorMode)modeIndex);
     }
 }
