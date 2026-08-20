@@ -121,7 +121,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4038788042513204960}
-  - component: {fileID: 2994890310244833029}
+  - component: {fileID: 5521576830587176521}
   m_Layer: 0
   m_Name: Pinheiro
   m_TagString: Untagged
@@ -145,8 +145,8 @@ Transform:
   - {fileID: 3374571326105493185}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &2994890310244833029
-BoxCollider:
+--- !u!64 &5521576830587176521
+MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -160,9 +160,10 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1.76, z: 1}
-  m_Center: {x: 0, y: 0.86, z: 3.3881318e-21}
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}

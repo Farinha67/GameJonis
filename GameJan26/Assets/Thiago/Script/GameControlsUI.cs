@@ -1,36 +1,18 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class GameControlsUI : MonoBehaviour
 {
-    [Header("Posição")]
-    public float margemDireita = 20f;
-    public float margemBaixo = 20f;
+    [Header("UI")]
+    public bool comandosAtivos = true;
 
-    [Header("Tamanho")]
-    public float largura = 320f;
-    public float altura = 330f;
+    [Header("Tecla para abrir/fechar")]
+    public KeyCode teclaComandos = KeyCode.F;
 
-    [Header("Texto")]
-    public int tamanhoTexto = 17;
+    private GUIStyle tituloStyle;
+    private GUIStyle comandoStyle;
+    private GUIStyle fundoStyle;
 
-    [Header("Painel")]
-    [Range(0f, 1f)]
-    public float transparenciaFundo = 0.75f;
-
-    // =====================================================
-    // ESTADO
-    // =====================================================
-
-    private bool comandosVisiveis = true;
-
-    // =====================================================
-    // ESTILOS
-    // =====================================================
-
-    private GUIStyle estiloFundo;
-    private GUIStyle estiloTexto;
-    private GUIStyle estiloTitulo;
+    private bool estilosCriados = false;
 
     // =====================================================
     // START
@@ -38,9 +20,8 @@ public class GameControlsUI : MonoBehaviour
 
     private void Start()
     {
-        comandosVisiveis = true;
-
-        CriarEstilos();
+        // Não criar GUIStyle aqui.
+        // Os estilos são criados dentro do OnGUI.
     }
 
     // =====================================================
@@ -49,123 +30,42 @@ public class GameControlsUI : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current == null)
-            return;
-
-        // =================================================
-        // F = ABRIR / FECHAR COMANDOS
-        // =================================================
-
-        if (Keyboard.current.fKey.wasPressedThisFrame)
+        if (Input.GetKeyDown(teclaComandos))
         {
-            comandosVisiveis =
-                !comandosVisiveis;
+            comandosAtivos =
+                !comandosAtivos;
+
+            Debug.Log(
+                comandosAtivos
+                    ? "📖 Comandos ativados."
+                    : "📖 Comandos desativados."
+            );
         }
     }
 
     // =====================================================
-    // CRIAR ESTILOS
-    // =====================================================
-
-    private void CriarEstilos()
-    {
-        // =================================================
-        // FUNDO
-        // =================================================
-
-        estiloFundo =
-            new GUIStyle(
-                GUI.skin.box
-            );
-
-        estiloFundo.alignment =
-            TextAnchor.UpperLeft;
-
-        estiloFundo.padding =
-            new RectOffset(
-                15,
-                15,
-                12,
-                12
-            );
-
-        // =================================================
-        // TEXTO
-        // =================================================
-
-        estiloTexto =
-            new GUIStyle(
-                GUI.skin.label
-            );
-
-        estiloTexto.fontSize =
-            tamanhoTexto;
-
-        estiloTexto.fontStyle =
-            FontStyle.Normal;
-
-        estiloTexto.alignment =
-            TextAnchor.UpperLeft;
-
-        estiloTexto.wordWrap =
-            true;
-
-        // =================================================
-        // TÍTULO
-        // =================================================
-
-        estiloTitulo =
-            new GUIStyle(
-                GUI.skin.label
-            );
-
-        estiloTitulo.fontSize =
-            tamanhoTexto + 4;
-
-        estiloTitulo.fontStyle =
-            FontStyle.Bold;
-
-        estiloTitulo.alignment =
-            TextAnchor.MiddleCenter;
-    }
-
-    // =====================================================
-    // GUI
+    // ON GUI
     // =====================================================
 
     private void OnGUI()
     {
-        // =================================================
-        // SE ESTIVER FECHADO
-        // =================================================
-
-        if (!comandosVisiveis)
+        if (!comandosAtivos)
             return;
 
-        // =================================================
-        // GARANTIR ESTILOS
-        // =================================================
+        CriarEstilos();
 
-        if (estiloFundo == null ||
-            estiloTexto == null ||
-            estiloTitulo == null)
-        {
-            CriarEstilos();
-        }
-
-        // =================================================
-        // POSIÇÃO
-        // =================================================
+        float largura = 350f;
+        float altura = 300f;
 
         float x =
             Screen.width -
             largura -
-            margemDireita;
+            20f;
 
         float y =
             Screen.height -
             altura -
-            margemBaixo;
+            20f;
 
         // =================================================
         // FUNDO
@@ -178,8 +78,8 @@ public class GameControlsUI : MonoBehaviour
                 largura,
                 altura
             ),
-            "",
-            estiloFundo
+            GUIContent.none,
+            fundoStyle
         );
 
         // =================================================
@@ -188,13 +88,13 @@ public class GameControlsUI : MonoBehaviour
 
         GUI.Label(
             new Rect(
-                x + 10f,
-                y + 8f,
-                largura - 20f,
+                x + 15f,
+                y + 10f,
+                largura - 30f,
                 35f
             ),
-            "COMANDOS",
-            estiloTitulo
+            "🎮 COMANDOS",
+            tituloStyle
         );
 
         // =================================================
@@ -202,31 +102,91 @@ public class GameControlsUI : MonoBehaviour
         // =================================================
 
         string comandos =
-            "[E]  Interagir\n\n" +
+            "E  →  Pegar / soltar lixo\n" +
+            "Q  →  Colocar lixo na lixeira\n" +
+            "E  →  Regar / colher árvore\n" +
+            "\n" +
 
-            "[1]  Árvore nível 1\n" +
-            "[2]  Árvore nível 2\n" +
-            "[3]  Árvore nível 3\n" +
-            "[4]  Pinheiro\n" +
-            "[5]  Macieira\n\n" +
+            "1  →  Selecionar Árvore Nível 1\n" +
+            "2  →  Selecionar Árvore Nível 2\n" +
+            "3  →  Selecionar Árvore Nível 3\n" +
+            "4  →  Selecionar Pinheiro\n" +
+            "5  →  Selecionar Macieira\n" +
+            "\n" +
 
-            "[E]  Plantar árvore\n" +
-            "[E]  Regar árvore\n" +
-            "[E]  Colher árvore\n" +
-            "[E]  Pegar regador\n" +
-            "[E]  Soltar regador\n\n" +
-
-            "[F]  Fechar comandos";
+            "F  →  Mostrar / esconder comandos\n" +
+            "Mouse  →  Olhar ao redor";
 
         GUI.Label(
             new Rect(
                 x + 15f,
-                y + 48f,
+                y + 50f,
                 largura - 30f,
                 altura - 60f
             ),
             comandos,
-            estiloTexto
+            comandoStyle
         );
+    }
+
+    // =====================================================
+    // CRIAR ESTILOS
+    // =====================================================
+
+    private void CriarEstilos()
+    {
+        if (estilosCriados)
+            return;
+
+        // =================================================
+        // TÍTULO
+        // =================================================
+
+        tituloStyle =
+            new GUIStyle(
+                GUI.skin.label
+            );
+
+        tituloStyle.fontSize =
+            22;
+
+        tituloStyle.fontStyle =
+            FontStyle.Bold;
+
+        tituloStyle.alignment =
+            TextAnchor.MiddleCenter;
+
+        // =================================================
+        // COMANDOS
+        // =================================================
+
+        comandoStyle =
+            new GUIStyle(
+                GUI.skin.label
+            );
+
+        comandoStyle.fontSize =
+            16;
+
+        comandoStyle.fontStyle =
+            FontStyle.Bold;
+
+        comandoStyle.alignment =
+            TextAnchor.UpperLeft;
+
+        comandoStyle.wordWrap =
+            true;
+
+        // =================================================
+        // FUNDO
+        // =================================================
+
+        fundoStyle =
+            new GUIStyle(
+                GUI.skin.box
+            );
+
+        estilosCriados =
+            true;
     }
 }

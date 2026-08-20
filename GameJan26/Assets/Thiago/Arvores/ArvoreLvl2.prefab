@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 419443369269956702}
-  - component: {fileID: 6959985133089838079}
+  - component: {fileID: 7873590310190171217}
   m_Layer: 0
   m_Name: ArvoreLvl2
   m_TagString: Untagged
@@ -33,8 +33,8 @@ Transform:
   - {fileID: 2440868798024640824}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6959985133089838079
-BoxCollider:
+--- !u!64 &7873590310190171217
+MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -48,12 +48,13 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 1
+  m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 2.9045246, z: 1}
-  m_Center: {x: -4.3303865e-15, y: 0.95226204, z: 1.7321546e-14}
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &7717020549843860483
 GameObject:
   m_ObjectHideFlags: 0

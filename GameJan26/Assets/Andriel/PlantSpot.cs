@@ -17,11 +17,11 @@ public class PlantSpot : MonoBehaviour
 
     [Header("Configuração")]
     public float distanciaPlantio = 5f;
-    public float distanciaEntreArvores = 0.35f;
 
-    [Header("Detecção da Árvore")]
-    [Tooltip("Aumente se quiser facilitar a mira nas árvores.")]
-    public float raioDeteccaoArvore = 0.45f;
+    [Tooltip("Distância máxima para regar e colher a árvore.")]
+    public float distanciaInteracaoArvore = 2f;
+
+    public float distanciaEntreArvores = 0.35f;
 
     // =====================================================
     // CRESCIMENTO
@@ -140,7 +140,8 @@ public class PlantSpot : MonoBehaviour
 
         if (playerObject != null)
         {
-            player = playerObject.transform;
+            player =
+                playerObject.transform;
 
             regadorPickup =
                 playerObject.GetComponent<RegadorPickup>();
@@ -167,11 +168,10 @@ public class PlantSpot : MonoBehaviour
 
     private void Update()
     {
-        if (!controladorDePlantio)
-        {
-            AtualizarSomCrescimento();
-            return;
-        }
+        // O crescimento e o som precisam continuar
+        // funcionando mesmo no PlantSpot da árvore.
+
+        AtualizarSomCrescimento();
 
         if (player == null)
             return;
@@ -185,6 +185,10 @@ public class PlantSpot : MonoBehaviour
         if (Keyboard.current == null)
             return;
 
+        // =================================================
+        // E = INTERAGIR
+        // =================================================
+
         if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             ProcessarInteracao();
@@ -197,22 +201,39 @@ public class PlantSpot : MonoBehaviour
 
     private void ProcessarInteracao()
     {
+        // =================================================
+        // PROCURAR ÁRVORE NA MIRA
+        // =================================================
+
         PlantSpot spotMirado =
             EncontrarArvoreMirada();
 
         // =================================================
-        // ÁRVORE
+        // ÁRVORE ENCONTRADA
         // =================================================
 
         if (spotMirado != null)
         {
-            Debug.Log("🌳 Árvore encontrada!");
+            Debug.Log(
+                "🌳 Árvore encontrada na mira!"
+            );
+
+            // =============================================
+            // REGAR
+            // =============================================
 
             if (!spotMirado.foiRegada)
             {
                 spotMirado.TentarRegar();
+
+                return;
             }
-            else if (spotMirado.terminouDeCrescer)
+
+            // =============================================
+            // COLHER
+            // =============================================
+
+            if (spotMirado.terminouDeCrescer)
             {
                 PlayerMoney dinheiro =
                     player != null
@@ -224,27 +245,49 @@ public class PlantSpot : MonoBehaviour
 
                 if (colheu && dinheiro != null)
                 {
-                    // O dinheiro é adicionado aqui.
-                    // Se o seu sistema já adiciona em outro lugar,
-                    // remova esta parte para não pagar duas vezes.
                     int valor =
                         spotMirado.GetValorColheita();
 
                     if (valor > 0)
-                        dinheiro.AdicionarDinheiro(valor);
+                    {
+                        dinheiro.AdicionarDinheiro(
+                            valor
+                        );
+                    }
                 }
+
+                return;
             }
+
+            // =============================================
+            // AINDA CRESCENDO
+            // =============================================
+
+            Debug.Log(
+                "🌱 A árvore ainda está crescendo."
+            );
 
             return;
         }
 
         // =================================================
-        // CHÃO
+        // SE NÃO FOR CONTROLADOR, NÃO PLANTA
+        // =================================================
+
+        if (!controladorDePlantio)
+            return;
+
+        // =================================================
+        // RAYCAST PARA O CHÃO
         // =================================================
 
         Ray ray =
             cam.ViewportPointToRay(
-                new Vector3(0.5f, 0.5f, 0f)
+                new Vector3(
+                    0.5f,
+                    0.5f,
+                    0f
+                )
             );
 
         if (!Physics.Raycast(
@@ -325,7 +368,7 @@ public class PlantSpot : MonoBehaviour
         }
 
         // =================================================
-        // DISTÂNCIA
+        // DISTÂNCIA ENTRE ÁRVORES
         // =================================================
 
         if (!PodePlantarAqui(ponto))
@@ -357,28 +400,51 @@ public class PlantSpot : MonoBehaviour
             );
 
         // =================================================
-        // 1. SPHERECAST
+        // RAYCAST SOMENTE ATÉ A DISTÂNCIA DE INTERAÇÃO
         // =================================================
 
-        RaycastHit[] sphereHits =
-            Physics.SphereCastAll(
+        RaycastHit[] hits =
+            Physics.RaycastAll(
                 ray,
-                raioDeteccaoArvore,
-                distanciaPlantio,
+                distanciaInteracaoArvore,
                 ~0,
                 QueryTriggerInteraction.Collide
             );
 
+        if (hits == null ||
+            hits.Length == 0)
+        {
+            return null;
+        }
+
+        // =================================================
+        // ORDENAR PELA DISTÂNCIA
+        // =================================================
+
         System.Array.Sort(
-            sphereHits,
+            hits,
             (a, b) =>
                 a.distance.CompareTo(
                     b.distance
                 )
         );
 
-        foreach (RaycastHit hit in sphereHits)
+        // =================================================
+        // PROCURAR ÁRVORE
+        // =================================================
+
+        foreach (RaycastHit hit in hits)
         {
+            if (hit.collider == null)
+                continue;
+
+            Debug.DrawRay(
+                ray.origin,
+                ray.direction * hit.distance,
+                Color.green,
+                0.5f
+            );
+
             PlantSpot spot =
                 EncontrarPlantSpot(
                     hit.collider
@@ -387,93 +453,39 @@ public class PlantSpot : MonoBehaviour
             if (spot == null)
                 continue;
 
+            // =================================================
+            // PRECISA SER ÁRVORE PLANTADA
+            // =================================================
+
             if (spot.controladorDePlantio)
                 continue;
 
             if (!spot.TemArvore())
                 continue;
+
+            // =================================================
+            // DISTÂNCIA REAL DO PLAYER
+            // =================================================
+
+            if (player != null)
+            {
+                float distancia =
+                    Vector3.Distance(
+                        player.position,
+                        spot.GetPosicaoArvore()
+                    );
+
+                if (distancia >
+                    distanciaInteracaoArvore)
+                {
+                    continue;
+                }
+            }
 
             return spot;
         }
 
-        // =================================================
-        // 2. RAYCAST NORMAL
-        // =================================================
-
-        if (Physics.Raycast(
-            ray,
-            out RaycastHit rayHit,
-            distanciaPlantio,
-            ~0,
-            QueryTriggerInteraction.Collide))
-        {
-            PlantSpot spot =
-                EncontrarPlantSpot(
-                    rayHit.collider
-                );
-
-            if (spot != null &&
-                !spot.controladorDePlantio &&
-                spot.TemArvore())
-            {
-                return spot;
-            }
-        }
-
-        // =================================================
-        // 3. DETECÇÃO PRÓXIMA
-        // =================================================
-        // Resolve principalmente o problema de a câmera
-        // ficar dentro do Collider quando o jogador chega
-        // muito perto da árvore.
-        // =================================================
-
-        Vector3 pontoFrente =
-            ray.origin +
-            ray.direction * 1.5f;
-
-        Collider[] collidersProximos =
-            Physics.OverlapSphere(
-                pontoFrente,
-                1.2f,
-                ~0,
-                QueryTriggerInteraction.Collide
-            );
-
-        float menorDistancia =
-            float.MaxValue;
-
-        PlantSpot melhorSpot =
-            null;
-
-        foreach (Collider col in collidersProximos)
-        {
-            PlantSpot spot =
-                EncontrarPlantSpot(col);
-
-            if (spot == null)
-                continue;
-
-            if (spot.controladorDePlantio)
-                continue;
-
-            if (!spot.TemArvore())
-                continue;
-
-            float distancia =
-                Vector3.Distance(
-                    ray.origin,
-                    spot.GetPosicaoArvore()
-                );
-
-            if (distancia < menorDistancia)
-            {
-                menorDistancia = distancia;
-                melhorSpot = spot;
-            }
-        }
-
-        return melhorSpot;
+        return null;
     }
 
     // =====================================================
@@ -486,11 +498,19 @@ public class PlantSpot : MonoBehaviour
         if (collider == null)
             return null;
 
+        // =================================================
+        // PRÓPRIO OBJETO
+        // =================================================
+
         PlantSpot spot =
             collider.GetComponent<PlantSpot>();
 
         if (spot != null)
             return spot;
+
+        // =================================================
+        // PAI
+        // =================================================
 
         spot =
             collider.GetComponentInParent<PlantSpot>();
@@ -498,10 +518,37 @@ public class PlantSpot : MonoBehaviour
         if (spot != null)
             return spot;
 
-        spot =
-            collider.GetComponentInChildren<PlantSpot>();
+        // =================================================
+        // FILHOS
+        // =================================================
 
-        return spot;
+        spot =
+            collider.GetComponentInChildren<PlantSpot>(
+                true
+            );
+
+        if (spot != null)
+            return spot;
+
+        // =================================================
+        // ROOT
+        // =================================================
+
+        Transform root =
+            collider.transform.root;
+
+        if (root != null)
+        {
+            spot =
+                root.GetComponentInChildren<PlantSpot>(
+                    true
+                );
+
+            if (spot != null)
+                return spot;
+        }
+
+        return null;
     }
 
     // =====================================================
@@ -580,10 +627,12 @@ public class PlantSpot : MonoBehaviour
         // TAMANHO
         // =================================================
 
-        SortearTamanho(novaArvore);
+        SortearTamanho(
+            novaArvore
+        );
 
         // =================================================
-        // CRIAR SPOT
+        // CRIAR PLANTSPOT
         // =================================================
 
         GameObject objetoSpot =
@@ -604,13 +653,26 @@ public class PlantSpot : MonoBehaviour
         PlantSpot novoSpot =
             objetoSpot.AddComponent<PlantSpot>();
 
-        novoSpot.controladorDePlantio = false;
-        novoSpot.areaPlantio = areaPlantio;
-        novoSpot.distanciaPlantio = distanciaPlantio;
-        novoSpot.distanciaEntreArvores = distanciaEntreArvores;
-        novoSpot.raioDeteccaoArvore = raioDeteccaoArvore;
-        novoSpot.tempoParaCrescer = tempoParaCrescer;
-        novoSpot.camadaDoChao = camadaDoChao;
+        novoSpot.controladorDePlantio =
+            false;
+
+        novoSpot.areaPlantio =
+            areaPlantio;
+
+        novoSpot.distanciaPlantio =
+            distanciaPlantio;
+
+        novoSpot.distanciaInteracaoArvore =
+            distanciaInteracaoArvore;
+
+        novoSpot.distanciaEntreArvores =
+            distanciaEntreArvores;
+
+        novoSpot.tempoParaCrescer =
+            tempoParaCrescer;
+
+        novoSpot.camadaDoChao =
+            camadaDoChao;
 
         // =================================================
         // TAMANHOS
@@ -631,6 +693,10 @@ public class PlantSpot : MonoBehaviour
         novoSpot.tamanhoMaximoColossal =
             tamanhoMaximoColossal;
 
+        // =================================================
+        // DINHEIRO
+        // =================================================
+
         novoSpot.multiplicadorMinimo =
             multiplicadorMinimo;
 
@@ -639,6 +705,10 @@ public class PlantSpot : MonoBehaviour
 
         novoSpot.multiplicadorColossal =
             multiplicadorColossal;
+
+        // =================================================
+        // TAMANHO INICIAL
+        // =================================================
 
         novoSpot.porcentagemTamanhoInicial =
             porcentagemTamanhoInicial;
@@ -688,9 +758,14 @@ public class PlantSpot : MonoBehaviour
         novoSpot.arvoreAtual =
             novaArvore;
 
-        novoSpot.foiRegada = false;
-        novoSpot.crescendo = false;
-        novoSpot.terminouDeCrescer = false;
+        novoSpot.foiRegada =
+            false;
+
+        novoSpot.crescendo =
+            false;
+
+        novoSpot.terminouDeCrescer =
+            false;
 
         novoSpot.tamanhoArvore =
             tamanhoArvore;
@@ -721,24 +796,13 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
-            "📏 Tamanho final sorteado: " +
+            "📏 Tamanho final: " +
             tamanhoArvore
         );
 
         Debug.Log(
-            "🌱 Tamanho inicial: " +
-            tamanhoArvore *
-            porcentagemTamanhoInicial
-        );
-
-        Debug.Log(
-            "🌱 Valor da semente: R$" +
-            valorSemente
-        );
-
-        Debug.Log(
-            "💰 Multiplicador: x" +
-            multiplicadorDinheiro
+            "💰 Valor da árvore: R$" +
+            novoSpot.GetValorColheita()
         );
     }
 
@@ -804,19 +868,17 @@ public class PlantSpot : MonoBehaviour
         if (foiRegada)
             return;
 
-        if (regadorPickup == null)
+        if (regadorPickup == null &&
+            player != null)
         {
-            if (player != null)
-            {
-                regadorPickup =
-                    player.GetComponent<RegadorPickup>();
-            }
+            regadorPickup =
+                player.GetComponent<RegadorPickup>();
         }
 
         if (regadorPickup == null)
         {
             Debug.LogError(
-                "❌ RegadorPickup não encontrado no Player!"
+                "❌ RegadorPickup não encontrado!"
             );
 
             return;
@@ -864,7 +926,8 @@ public class PlantSpot : MonoBehaviour
         if (foiRegada)
             return;
 
-        foiRegada = true;
+        foiRegada =
+            true;
 
         if (regarAudioSource != null &&
             somRegar != null)
@@ -889,8 +952,11 @@ public class PlantSpot : MonoBehaviour
 
     private IEnumerator CrescerArvore()
     {
-        crescendo = true;
-        terminouDeCrescer = false;
+        crescendo =
+            true;
+
+        terminouDeCrescer =
+            false;
 
         Vector3 escalaInicial =
             Vector3.one *
@@ -909,7 +975,8 @@ public class PlantSpot : MonoBehaviour
                 escalaInicial;
         }
 
-        float tempo = 0f;
+        float tempo =
+            0f;
 
         if (crescimentoAudioSource != null &&
             somCrescimento != null)
@@ -917,7 +984,9 @@ public class PlantSpot : MonoBehaviour
             crescimentoAudioSource.clip =
                 somCrescimento;
 
-            crescimentoAudioSource.loop = true;
+            crescimentoAudioSource.loop =
+                true;
+
             crescimentoAudioSource.volume =
                 volumeMaximo;
 
@@ -932,8 +1001,11 @@ public class PlantSpot : MonoBehaviour
             {
                 PararSomCrescimento();
 
-                crescendo = false;
-                terminouDeCrescer = false;
+                crescendo =
+                    false;
+
+                terminouDeCrescer =
+                    false;
 
                 yield break;
             }
@@ -972,8 +1044,11 @@ public class PlantSpot : MonoBehaviour
 
         PararSomCrescimento();
 
-        crescendo = false;
-        terminouDeCrescer = true;
+        crescendo =
+            false;
+
+        terminouDeCrescer =
+            true;
 
         Debug.Log(
             "🌳 ÁRVORE CRESCEU!"
@@ -996,7 +1071,7 @@ public class PlantSpot : MonoBehaviour
     }
 
     // =====================================================
-    // SOM CRESCIMENTO
+    // SOM DO CRESCIMENTO
     // =====================================================
 
     private void AtualizarSomCrescimento()
@@ -1131,7 +1206,7 @@ public class PlantSpot : MonoBehaviour
             GetValorColheita();
 
         Debug.Log(
-            "🌳 Árvore colhida!"
+            "🌳 ÁRVORE COLHIDA!"
         );
 
         Debug.Log(
@@ -1145,7 +1220,7 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
-            "💰 Valor: R$" +
+            "💵 Valor: R$" +
             valor
         );
 
@@ -1154,14 +1229,24 @@ public class PlantSpot : MonoBehaviour
         GameObject arvore =
             arvoreAtual;
 
-        arvoreAtual = null;
-        foiRegada = false;
-        crescendo = false;
-        terminouDeCrescer = false;
+        arvoreAtual =
+            null;
 
-        valorBaseArvore = 0;
+        foiRegada =
+            false;
 
-        Destroy(arvore);
+        crescendo =
+            false;
+
+        terminouDeCrescer =
+            false;
+
+        valorBaseArvore =
+            0;
+
+        Destroy(
+            arvore
+        );
 
         return true;
     }
@@ -1172,6 +1257,10 @@ public class PlantSpot : MonoBehaviour
 
     private void OnGUI()
     {
+        // =================================================
+        // SOMENTE O CONTROLADOR MOSTRA A UI
+        // =================================================
+
         if (!controladorDePlantio)
             return;
 
@@ -1187,11 +1276,12 @@ public class PlantSpot : MonoBehaviour
         if (spot == null)
             return;
 
-        if (spot.controladorDePlantio)
-            return;
-
         if (!spot.TemArvore())
             return;
+
+        // =================================================
+        // REGAR
+        // =================================================
 
         if (!spot.foiRegada)
         {
@@ -1215,6 +1305,10 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
+        // =================================================
+        // CRESCENDO
+        // =================================================
+
         if (spot.crescendo)
         {
             MostrarTexto(
@@ -1223,6 +1317,10 @@ public class PlantSpot : MonoBehaviour
 
             return;
         }
+
+        // =================================================
+        // PRONTA
+        // =================================================
 
         if (spot.terminouDeCrescer)
         {
@@ -1246,7 +1344,9 @@ public class PlantSpot : MonoBehaviour
                 GUI.skin.box
             );
 
-        estilo.fontSize = 18;
+        estilo.fontSize =
+            18;
+
         estilo.fontStyle =
             FontStyle.Bold;
 

@@ -74,17 +74,29 @@ public class TutorialJogo : MonoBehaviour
         player =
             playerObject.transform;
 
+        // =================================================
+        // SHOP
+        // =================================================
+
         if (shop == null)
         {
             shop =
                 FindFirstObjectByType<Shop>();
         }
 
+        // =================================================
+        // REGADOR
+        // =================================================
+
         if (regadorPickup == null)
         {
             regadorPickup =
                 playerObject.GetComponent<RegadorPickup>();
         }
+
+        // =================================================
+        // VERIFICAÇÕES
+        // =================================================
 
         if (shop == null)
         {
@@ -100,10 +112,18 @@ public class TutorialJogo : MonoBehaviour
             );
         }
 
+        // =================================================
+        // QUANTIDADE INICIAL
+        // =================================================
+
         quantidadeInicialArvore1 =
             shop != null
                 ? shop.GetQuantidadeSemente(1)
                 : 0;
+
+        // =================================================
+        // INICIAR
+        // =================================================
 
         etapaAtual =
             Etapa.ComprarArvoreNivel1;
@@ -179,6 +199,7 @@ public class TutorialJogo : MonoBehaviour
                 break;
 
             case Etapa.Finalizado:
+                FinalizarTutorial();
                 break;
         }
     }
@@ -298,7 +319,7 @@ public class TutorialJogo : MonoBehaviour
     }
 
     // =====================================================
-    // 6 - ENCHER
+    // 6 - ENCHER REGADOR
     // =====================================================
 
     private void VerificarRegadorCheio()
@@ -334,8 +355,8 @@ public class TutorialJogo : MonoBehaviour
         if (regadorPickup == null)
             return;
 
-        // Se o regador já gastou água,
-        // significa que a rega aconteceu.
+        // Se o regador gastou água,
+        // significa que a árvore foi regada.
         if (!regadorPickup.EstaCheio())
         {
             Avancar(
@@ -358,7 +379,13 @@ public class TutorialJogo : MonoBehaviour
                 return;
         }
 
-        if (arvorePlantada.TemArvore())
+        // =================================================
+        // IMPORTANTE:
+        // Só avança quando a árvore realmente terminou
+        // de crescer.
+        // =================================================
+
+        if (arvorePlantada.terminouDeCrescer)
         {
             Avancar(
                 Etapa.Colher
@@ -375,13 +402,15 @@ public class TutorialJogo : MonoBehaviour
         if (arvorePlantada == null)
             return;
 
-        // Depois da colheita o PlantSpot
-        // normalmente deixa de ter árvore.
+        // =================================================
+        // A árvore foi colhida
+        // =================================================
+
         if (!arvorePlantada.TemArvore())
         {
-            Avancar(
-                Etapa.Finalizado
-            );
+            FinalizarTutorial();
+
+            return;
         }
     }
 
@@ -429,6 +458,45 @@ public class TutorialJogo : MonoBehaviour
     }
 
     // =====================================================
+    // FINALIZAR TUTORIAL
+    // =====================================================
+
+    private void FinalizarTutorial()
+    {
+        // =================================================
+        // EVITAR EXECUTAR VÁRIAS VEZES
+        // =================================================
+
+        if (!tutorialAtivo)
+            return;
+
+        etapaAtual =
+            Etapa.Finalizado;
+
+        // =================================================
+        // DESATIVAR IMEDIATAMENTE
+        // =================================================
+
+        tutorialAtivo =
+            false;
+
+        // =================================================
+        // LIMPAR REFERÊNCIA
+        // =================================================
+
+        arvorePlantada =
+            null;
+
+        Debug.Log(
+            "🎉 TUTORIAL CONCLUÍDO!"
+        );
+
+        Debug.Log(
+            "🎓 Mensagem do tutorial removida."
+        );
+    }
+
+    // =====================================================
     // TEXTO
     // =====================================================
 
@@ -464,7 +532,7 @@ public class TutorialJogo : MonoBehaviour
                 return "Colete a árvore quando ela estiver pronta.";
 
             case Etapa.Finalizado:
-                return "Tutorial concluído!";
+                return "";
 
             default:
                 return "";
@@ -477,29 +545,20 @@ public class TutorialJogo : MonoBehaviour
 
     private void OnGUI()
     {
+        // =================================================
+        // SE O TUTORIAL ESTIVER DESATIVADO,
+        // NÃO MOSTRA ABSOLUTAMENTE NADA
+        // =================================================
+
         if (!tutorialAtivo)
             return;
 
-        if (etapaAtual ==
-            Etapa.Finalizado)
-        {
-            GUIStyle finalStyle =
-                CriarEstilo();
+        // =================================================
+        // SEGURANÇA
+        // =================================================
 
-            GUI.Box(
-                new Rect(
-                    (Screen.width - 500f) / 2f,
-                    35f,
-                    500f,
-                    70f
-                ),
-                "🎉 TUTORIAL CONCLUÍDO!\n" +
-                "Você aprendeu a plantar e colher.",
-                finalStyle
-            );
-
+        if (etapaAtual == Etapa.Finalizado)
             return;
-        }
 
         GUIStyle estilo =
             CriarEstilo();
@@ -528,7 +587,8 @@ public class TutorialJogo : MonoBehaviour
                 GUI.skin.box
             );
 
-        estilo.fontSize = 20;
+        estilo.fontSize =
+            20;
 
         estilo.fontStyle =
             FontStyle.Bold;
@@ -536,43 +596,64 @@ public class TutorialJogo : MonoBehaviour
         estilo.alignment =
             TextAnchor.MiddleCenter;
 
-        estilo.wordWrap = true;
+        estilo.wordWrap =
+            true;
 
         return estilo;
     }
 
     // =====================================================
-    // ATIVAR / DESATIVAR
+    // ATIVAR TUTORIAL
     // =====================================================
 
     public void IniciarTutorial()
     {
-        tutorialAtivo = true;
+        tutorialAtivo =
+            true;
 
         etapaAtual =
             Etapa.ComprarArvoreNivel1;
+
+        arvorePlantada =
+            null;
 
         quantidadeInicialArvore1 =
             shop != null
                 ? shop.GetQuantidadeSemente(1)
                 : 0;
+
+        Debug.Log(
+            "🎓 Tutorial iniciado novamente."
+        );
     }
+
+    // =====================================================
+    // PULAR TUTORIAL
+    // =====================================================
 
     public void PularTutorial()
     {
-        tutorialAtivo = false;
-
-        etapaAtual =
-            Etapa.Finalizado;
+        FinalizarTutorial();
     }
+
+    // =====================================================
+    // ESTADO
+    // =====================================================
 
     public bool TutorialAtivo()
     {
         return tutorialAtivo;
     }
 
+    // =====================================================
+    // ETAPA ATUAL
+    // =====================================================
+
     public string GetEtapaAtual()
     {
+        if (!tutorialAtivo)
+            return "";
+
         return ObterTextoEtapa();
     }
 }

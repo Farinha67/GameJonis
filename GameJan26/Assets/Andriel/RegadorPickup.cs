@@ -30,8 +30,8 @@ public class RegadorPickup : MonoBehaviour
 
     private bool estaNaMao = false;
 
-    // Escala original do regador
     private Vector3 escalaOriginalRegador;
+
 
     // =====================================================
     // UPDATE
@@ -56,49 +56,45 @@ public class RegadorPickup : MonoBehaviour
         }
 
         // =================================================
-        // ESTÁ MIRANDO NO POÇO
-        // =================================================
-        // IMPORTANTE:
-        // Se estiver olhando para o poço, NÃO solta.
-        // O PocoAgua.cs poderá usar o mesmo E para
-        // encher o regador.
+        // ESTÁ OLHANDO PARA O POÇO
         // =================================================
 
         if (EstaMirandoNoPoco())
         {
+            // Não solta.
+            // O PocoAgua pode usar o E para encher.
             return;
         }
 
         // =================================================
-        // ESTÁ MIRANDO EM ÁRVORE
-        // =================================================
-        // O PlantSpot vai cuidar da rega.
+        // ESTÁ OLHANDO PARA ÁRVORE
         // =================================================
 
         if (EstaMirandoEmArvore())
         {
+            // Não solta.
+            // O PlantSpot pode usar o E para regar.
             return;
         }
 
         // =================================================
-        // NÃO ESTÁ MIRANDO EM POÇO NEM ÁRVORE
-        // =================================================
-        // Então pode soltar.
+        // NÃO ESTÁ OLHANDO PARA ÁRVORE NEM POÇO
         // =================================================
 
         Soltar();
     }
 
+
     // =====================================================
-    // VERIFICAR POÇO
+    // RAYCAST PARA ENCONTRAR OBJETO
     // =====================================================
 
-    private bool EstaMirandoNoPoco()
+    private RaycastHit[] PegarHitsDaCamera()
     {
         Camera cam = Camera.main;
 
         if (cam == null)
-            return false;
+            return null;
 
         Ray ray = new Ray(
             cam.transform.position,
@@ -113,13 +109,28 @@ public class RegadorPickup : MonoBehaviour
         );
 
         if (hits == null || hits.Length == 0)
-            return false;
+            return null;
 
         System.Array.Sort(
             hits,
             (a, b) =>
                 a.distance.CompareTo(b.distance)
         );
+
+        return hits;
+    }
+
+
+    // =====================================================
+    // VERIFICAR POÇO
+    // =====================================================
+
+    private bool EstaMirandoNoPoco()
+    {
+        RaycastHit[] hits = PegarHitsDaCamera();
+
+        if (hits == null)
+            return false;
 
         foreach (RaycastHit hit in hits)
         {
@@ -150,42 +161,26 @@ public class RegadorPickup : MonoBehaviour
         return false;
     }
 
+
     // =====================================================
     // VERIFICAR ÁRVORE
     // =====================================================
 
     private bool EstaMirandoEmArvore()
     {
-        Camera cam = Camera.main;
+        RaycastHit[] hits = PegarHitsDaCamera();
 
-        if (cam == null)
+        if (hits == null)
             return false;
-
-        Ray ray = new Ray(
-            cam.transform.position,
-            cam.transform.forward
-        );
-
-        RaycastHit[] hits = Physics.RaycastAll(
-            ray,
-            distanciaPegar,
-            ~0,
-            QueryTriggerInteraction.Collide
-        );
-
-        if (hits == null || hits.Length == 0)
-            return false;
-
-        System.Array.Sort(
-            hits,
-            (a, b) =>
-                a.distance.CompareTo(b.distance)
-        );
 
         foreach (RaycastHit hit in hits)
         {
             if (hit.collider == null)
                 continue;
+
+            // =================================================
+            // TENTA ENCONTRAR PLANTSPOT
+            // =================================================
 
             PlantSpot spot =
                 hit.collider.GetComponent<PlantSpot>();
@@ -202,11 +197,18 @@ public class RegadorPickup : MonoBehaviour
                     hit.collider.GetComponentInChildren<PlantSpot>();
             }
 
+            // =================================================
+            // NÃO ACHOU PLANTSPOT
+            // =================================================
+
             if (spot == null)
                 continue;
 
-            if (!spot.controladorDePlantio &&
-                spot.TemArvore())
+            // =================================================
+            // É UM PLANTSPOT VÁLIDO
+            // =================================================
+
+            if (spot.TemArvore())
             {
                 return true;
             }
@@ -214,6 +216,7 @@ public class RegadorPickup : MonoBehaviour
 
         return false;
     }
+
 
     // =====================================================
     // PEGAR
@@ -235,29 +238,10 @@ public class RegadorPickup : MonoBehaviour
             return;
         }
 
-        Ray ray = new Ray(
-            cam.transform.position,
-            cam.transform.forward
-        );
+        RaycastHit[] hits = PegarHitsDaCamera();
 
-        // Procura todos os objetos no caminho.
-        // Isso evita a lixeira bloquear o regador.
-
-        RaycastHit[] hits = Physics.RaycastAll(
-            ray,
-            distanciaPegar,
-            ~0,
-            QueryTriggerInteraction.Collide
-        );
-
-        if (hits == null || hits.Length == 0)
+        if (hits == null)
             return;
-
-        System.Array.Sort(
-            hits,
-            (a, b) =>
-                a.distance.CompareTo(b.distance)
-        );
 
         GameObject objetoRegador = null;
 
@@ -289,11 +273,10 @@ public class RegadorPickup : MonoBehaviour
         // REGADOR
         // =================================================
 
-        regadorNaMao =
-            objetoRegador;
+        regadorNaMao = objetoRegador;
 
         // =================================================
-        // SALVAR ESCALA ORIGINAL
+        // ESCALA ORIGINAL
         // =================================================
 
         escalaOriginalRegador =
@@ -366,7 +349,7 @@ public class RegadorPickup : MonoBehaviour
             holdingPoint.rotation;
 
         // =================================================
-        // MANTER ESCALA ORIGINAL
+        // MANTER ESCALA
         // =================================================
 
         Vector3 escalaPai =
@@ -388,9 +371,7 @@ public class RegadorPickup : MonoBehaviour
 
         estaNaMao = true;
 
-        Debug.Log(
-            "💧 Regador pegado!"
-        );
+        Debug.Log("💧 Regador pegado!");
 
         Debug.Log(
             "💧 Água: " +
@@ -399,6 +380,7 @@ public class RegadorPickup : MonoBehaviour
             capacidadeMaxima
         );
     }
+
 
     // =====================================================
     // ENCONTRAR REGADOR
@@ -411,12 +393,12 @@ public class RegadorPickup : MonoBehaviour
         if (collider == null)
             return null;
 
+        Transform atual =
+            collider.transform;
+
         // =================================================
         // SUBIR HIERARQUIA
         // =================================================
-
-        Transform atual =
-            collider.transform;
 
         while (atual != null)
         {
@@ -425,12 +407,11 @@ public class RegadorPickup : MonoBehaviour
                 return atual.gameObject;
             }
 
-            atual =
-                atual.parent;
+            atual = atual.parent;
         }
 
         // =================================================
-        // PROCURAR NOS FILHOS
+        // PROCURAR FILHOS
         // =================================================
 
         Transform[] filhos =
@@ -448,6 +429,7 @@ public class RegadorPickup : MonoBehaviour
 
         return null;
     }
+
 
     // =====================================================
     // SOLTAR
@@ -638,10 +620,9 @@ public class RegadorPickup : MonoBehaviour
         rbRegador = null;
         collidersRegador = null;
 
-        Debug.Log(
-            "💧 Regador solto!"
-        );
+        Debug.Log("💧 Regador solto!");
     }
+
 
     // =====================================================
     // ENCHER REGADOR
@@ -660,6 +641,7 @@ public class RegadorPickup : MonoBehaviour
         );
     }
 
+
     // =====================================================
     // USAR ÁGUA
     // =====================================================
@@ -668,9 +650,7 @@ public class RegadorPickup : MonoBehaviour
     {
         if (aguaAtual <= 0)
         {
-            Debug.Log(
-                "❌ Regador vazio!"
-            );
+            Debug.Log("❌ Regador vazio!");
 
             return false;
         }
@@ -687,6 +667,7 @@ public class RegadorPickup : MonoBehaviour
         return true;
     }
 
+
     // =====================================================
     // TEM ÁGUA
     // =====================================================
@@ -695,6 +676,7 @@ public class RegadorPickup : MonoBehaviour
     {
         return aguaAtual > 0;
     }
+
 
     // =====================================================
     // ÁGUA ATUAL
@@ -705,6 +687,7 @@ public class RegadorPickup : MonoBehaviour
         return aguaAtual;
     }
 
+
     // =====================================================
     // COMPATIBILIDADE COM POÇO
     // =====================================================
@@ -713,6 +696,7 @@ public class RegadorPickup : MonoBehaviour
     {
         return aguaAtual;
     }
+
 
     // =====================================================
     // CAPACIDADE
@@ -723,6 +707,7 @@ public class RegadorPickup : MonoBehaviour
         return capacidadeMaxima;
     }
 
+
     // =====================================================
     // CHEIO
     // =====================================================
@@ -732,6 +717,7 @@ public class RegadorPickup : MonoBehaviour
         return aguaAtual >= capacidadeMaxima;
     }
 
+
     // =====================================================
     // VAZIO
     // =====================================================
@@ -740,6 +726,7 @@ public class RegadorPickup : MonoBehaviour
     {
         return aguaAtual <= 0;
     }
+
 
     // =====================================================
     // ESTÁ SEGURANDO
@@ -752,6 +739,7 @@ public class RegadorPickup : MonoBehaviour
             estaNaMao;
     }
 
+
     // =====================================================
     // COMPATIBILIDADE
     // =====================================================
@@ -761,6 +749,7 @@ public class RegadorPickup : MonoBehaviour
         return EstaSegurando();
     }
 
+
     // =====================================================
     // COMPATIBILIDADE ANTIGA
     // =====================================================
@@ -769,6 +758,7 @@ public class RegadorPickup : MonoBehaviour
     {
         return UsarAgua();
     }
+
 
     // =====================================================
     // UI
@@ -806,6 +796,7 @@ public class RegadorPickup : MonoBehaviour
             estilo
         );
     }
+
 
     // =====================================================
     // GIZMO
