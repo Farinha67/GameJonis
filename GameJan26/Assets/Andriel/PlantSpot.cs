@@ -127,7 +127,14 @@ public class PlantSpot : MonoBehaviour
 
     private float tamanhoArvore = 1f;
     private float multiplicadorDinheiro = 1f;
+
+    // Valor base da árvore.
     private int valorBaseArvore = 0;
+
+    // Valor guardado da colheita.
+    // Isso impede que o valor seja perdido quando a árvore
+    // for destruída.
+    private int valorColheitaGuardado = 0;
 
     // =====================================================
     // START
@@ -156,9 +163,16 @@ public class PlantSpot : MonoBehaviour
         if (controladorDePlantio)
         {
             arvoreAtual = null;
+
             foiRegada = false;
+
             crescendo = false;
+
             terminouDeCrescer = false;
+
+            valorBaseArvore = 0;
+
+            valorColheitaGuardado = 0;
         }
     }
 
@@ -168,9 +182,6 @@ public class PlantSpot : MonoBehaviour
 
     private void Update()
     {
-        // O crescimento e o som precisam continuar
-        // funcionando mesmo no PlantSpot da árvore.
-
         AtualizarSomCrescimento();
 
         if (player == null)
@@ -240,18 +251,52 @@ public class PlantSpot : MonoBehaviour
                         ? player.GetComponent<PlayerMoney>()
                         : null;
 
+                // =================================================
+                // IMPORTANTE:
+                // PEGAR O VALOR ANTES DE COLHER.
+                // =================================================
+
+                int valor =
+                    spotMirado.GetValorColheita();
+
+                Debug.Log(
+                    "💰 Valor calculado ANTES da colheita: R$" +
+                    valor
+                );
+
+                // =================================================
+                // COLHER
+                // =================================================
+
                 bool colheu =
                     spotMirado.ColherArvore();
 
+                // =================================================
+                // DAR DINHEIRO
+                // =================================================
+
                 if (colheu && dinheiro != null)
                 {
-                    int valor =
-                        spotMirado.GetValorColheita();
-
                     if (valor > 0)
                     {
                         dinheiro.AdicionarDinheiro(
                             valor
+                        );
+
+                        Debug.Log(
+                            "💵 DINHEIRO ADICIONADO: R$" +
+                            valor
+                        );
+
+                        Debug.Log(
+                            "💰 SALDO ATUAL: R$" +
+                            dinheiro.GetDinheiro()
+                        );
+                    }
+                    else
+                    {
+                        Debug.LogError(
+                            "❌ A árvore foi colhida, mas o valor calculado foi R$0!"
                         );
                     }
                 }
@@ -399,10 +444,6 @@ public class PlantSpot : MonoBehaviour
                 )
             );
 
-        // =================================================
-        // RAYCAST SOMENTE ATÉ A DISTÂNCIA DE INTERAÇÃO
-        // =================================================
-
         RaycastHit[] hits =
             Physics.RaycastAll(
                 ray,
@@ -417,10 +458,6 @@ public class PlantSpot : MonoBehaviour
             return null;
         }
 
-        // =================================================
-        // ORDENAR PELA DISTÂNCIA
-        // =================================================
-
         System.Array.Sort(
             hits,
             (a, b) =>
@@ -429,21 +466,10 @@ public class PlantSpot : MonoBehaviour
                 )
         );
 
-        // =================================================
-        // PROCURAR ÁRVORE
-        // =================================================
-
         foreach (RaycastHit hit in hits)
         {
             if (hit.collider == null)
                 continue;
-
-            Debug.DrawRay(
-                ray.origin,
-                ray.direction * hit.distance,
-                Color.green,
-                0.5f
-            );
 
             PlantSpot spot =
                 EncontrarPlantSpot(
@@ -452,10 +478,6 @@ public class PlantSpot : MonoBehaviour
 
             if (spot == null)
                 continue;
-
-            // =================================================
-            // PRECISA SER ÁRVORE PLANTADA
-            // =================================================
 
             if (spot.controladorDePlantio)
                 continue;
@@ -498,29 +520,17 @@ public class PlantSpot : MonoBehaviour
         if (collider == null)
             return null;
 
-        // =================================================
-        // PRÓPRIO OBJETO
-        // =================================================
-
         PlantSpot spot =
             collider.GetComponent<PlantSpot>();
 
         if (spot != null)
             return spot;
 
-        // =================================================
-        // PAI
-        // =================================================
-
         spot =
             collider.GetComponentInParent<PlantSpot>();
 
         if (spot != null)
             return spot;
-
-        // =================================================
-        // FILHOS
-        // =================================================
 
         spot =
             collider.GetComponentInChildren<PlantSpot>(
@@ -529,10 +539,6 @@ public class PlantSpot : MonoBehaviour
 
         if (spot != null)
             return spot;
-
-        // =================================================
-        // ROOT
-        // =================================================
 
         Transform root =
             collider.transform.root;
@@ -613,8 +619,21 @@ public class PlantSpot : MonoBehaviour
             return;
         }
 
+        // =================================================
+        // PEGAR VALOR ANTES DE CONSUMIR A SEMENTE
+        // =================================================
+
         int valorSemente =
             loja.GetValorSementeSelecionada();
+
+        if (valorSemente <= 0)
+        {
+            Debug.LogError(
+                "❌ O valor base da árvore é R$0!"
+            );
+
+            return;
+        }
 
         GameObject novaArvore =
             Instantiate(
@@ -652,6 +671,10 @@ public class PlantSpot : MonoBehaviour
 
         PlantSpot novoSpot =
             objetoSpot.AddComponent<PlantSpot>();
+
+        // =================================================
+        // CONFIGURAÇÃO
+        // =================================================
 
         novoSpot.controladorDePlantio =
             false;
@@ -719,6 +742,9 @@ public class PlantSpot : MonoBehaviour
 
         novoSpot.valorBaseArvore =
             valorSemente;
+
+        novoSpot.valorColheitaGuardado =
+            0;
 
         // =================================================
         // SONS
@@ -791,6 +817,10 @@ public class PlantSpot : MonoBehaviour
             );
         }
 
+        // =================================================
+        // DEBUG
+        // =================================================
+
         Debug.Log(
             "🌱 ÁRVORE PLANTADA!"
         );
@@ -801,7 +831,17 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
-            "💰 Valor da árvore: R$" +
+            "💰 Valor base: R$" +
+            valorSemente
+        );
+
+        Debug.Log(
+            "💰 Multiplicador: x" +
+            multiplicadorDinheiro
+        );
+
+        Debug.Log(
+            "💵 Valor final: R$" +
             novoSpot.GetValorColheita()
         );
     }
@@ -1050,6 +1090,13 @@ public class PlantSpot : MonoBehaviour
         terminouDeCrescer =
             true;
 
+        // =================================================
+        // GUARDAR O VALOR DA COLHEITA
+        // =================================================
+
+        valorColheitaGuardado =
+            CalcularValorColheita();
+
         Debug.Log(
             "🌳 ÁRVORE CRESCEU!"
         );
@@ -1065,8 +1112,26 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
-            "💵 Valor: R$" +
-            GetValorColheita()
+            "💵 VALOR DA COLHEITA: R$" +
+            valorColheitaGuardado
+        );
+    }
+
+    // =====================================================
+    // CALCULAR VALOR
+    // =====================================================
+
+    private int CalcularValorColheita()
+    {
+        if (valorBaseArvore <= 0)
+            return 0;
+
+        return Mathf.Max(
+            1,
+            Mathf.RoundToInt(
+                valorBaseArvore *
+                multiplicadorDinheiro
+            )
         );
     }
 
@@ -1173,18 +1238,17 @@ public class PlantSpot : MonoBehaviour
     }
 
     // =====================================================
-    // VALOR
+    // VALOR DA COLHEITA
     // =====================================================
 
     public int GetValorColheita()
     {
-        if (valorBaseArvore <= 0)
-            return 0;
+        // Se já temos um valor guardado porque a árvore
+        // terminou de crescer, usamos ele.
+        if (valorColheitaGuardado > 0)
+            return valorColheitaGuardado;
 
-        return Mathf.RoundToInt(
-            valorBaseArvore *
-            multiplicadorDinheiro
-        );
+        return CalcularValorColheita();
     }
 
     // =====================================================
@@ -1201,6 +1265,10 @@ public class PlantSpot : MonoBehaviour
 
             return false;
         }
+
+        // =================================================
+        // PEGAR VALOR ANTES DE RESETAR OS DADOS
+        // =================================================
 
         int valor =
             GetValorColheita();
@@ -1220,7 +1288,7 @@ public class PlantSpot : MonoBehaviour
         );
 
         Debug.Log(
-            "💵 Valor: R$" +
+            "💵 VALOR PAGO: R$" +
             valor
         );
 
@@ -1228,6 +1296,10 @@ public class PlantSpot : MonoBehaviour
 
         GameObject arvore =
             arvoreAtual;
+
+        // =================================================
+        // RESET
+        // =================================================
 
         arvoreAtual =
             null;
@@ -1244,9 +1316,23 @@ public class PlantSpot : MonoBehaviour
         valorBaseArvore =
             0;
 
-        Destroy(
-            arvore
-        );
+        // =================================================
+        // NÃO APAGAR O VALOR GUARDADO AQUI
+        // =================================================
+
+        valorColheitaGuardado =
+            valor;
+
+        // =================================================
+        // DESTRUIR
+        // =================================================
+
+        if (arvore != null)
+        {
+            Destroy(
+                arvore
+            );
+        }
 
         return true;
     }
@@ -1257,10 +1343,6 @@ public class PlantSpot : MonoBehaviour
 
     private void OnGUI()
     {
-        // =================================================
-        // SOMENTE O CONTROLADOR MOSTRA A UI
-        // =================================================
-
         if (!controladorDePlantio)
             return;
 

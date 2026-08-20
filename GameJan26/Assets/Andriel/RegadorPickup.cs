@@ -833,4 +833,4 @@ public class RegadorPickup : MonoBehaviour
             ponto
         );
     }
-}
+}   
